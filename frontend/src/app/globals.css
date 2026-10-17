@@ -1,0 +1,29 @@
+@import "tailwindcss";
+
+:root {
+  --diptos-bg-alabaster: #F8FAFC;
+  --diptos-surface-white: #FFFFFF;
+  --diptos-border-hairline: #E2E8F0;
+  --diptos-ink-primary: #0F172A;
+  --diptos-ink-body: #334155;
+  --diptos-ink-muted: #64748B;
+  --diptos-navy-cta: #0A2540;
+  --diptos-emerald-yield: #047857;
+  --diptos-blue-trust: #1D4ED8;
+  --diptos-red-alert: #991B1B;
+}
+
+body {
+  background-color: var(--diptos-bg-alabaster);
+  color: var(--diptos-ink-primary);
+  font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.font-mono,
+code,
+pre,
+.tabular-nums {
+  font-family: var(--font-ibm-plex-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+}
