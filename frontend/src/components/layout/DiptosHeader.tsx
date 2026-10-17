@@ -48,6 +48,7 @@ export function DiptosHeader() {
     didBaseDisplay,
     smartAccountAddress,
     eoaAddress,
+    activeAddress,
     vleiProfile,
     isRegisteredOnChain,
     registeredCorporateRole,
@@ -176,10 +177,26 @@ export function DiptosHeader() {
             type="button"
             onClick={() => setIsAuthModalOpen(true)}
             title="Connect or Switch MetaMask Account, Passkey, or OTP"
-            className="hidden md:inline-flex items-center gap-1.5 rounded-md border border-[#CBD5E1] bg-white px-2.5 py-1.5 text-[11px] font-semibold text-[#0A2540] hover:bg-[#F8FAFC] cursor-pointer"
+            className={`hidden md:inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[11px] font-semibold transition cursor-pointer ${
+              isAuthenticated && activeAddress
+                ? 'border-emerald-300 bg-emerald-50/90 text-[#047857] hover:bg-emerald-100'
+                : 'border-[#CBD5E1] bg-white text-[#0A2540] hover:bg-[#F8FAFC]'
+            }`}
           >
-            <Wallet className="h-3.5 w-3.5 text-[#0284C7]" />
-            <span>Connect / Switch MetaMask</span>
+            {isAuthenticated && activeAddress ? (
+              <>
+                <span className="h-2 w-2 rounded-full bg-[#059669]" />
+                <Wallet className="h-3.5 w-3.5 text-[#059669]" />
+                <span className="font-mono tabular-nums">
+                  Wallet Connected ({activeAddress.slice(0, 6)}...{activeAddress.slice(-4)})
+                </span>
+              </>
+            ) : (
+              <>
+                <Wallet className="h-3.5 w-3.5 text-[#0284C7]" />
+                <span>Connect / Switch MetaMask</span>
+              </>
+            )}
           </button>
 
           {/* Chain Selector: Base Sepolia (84532) / Local Anvil (31337) / Base (8453) */}

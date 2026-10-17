@@ -22,6 +22,7 @@ import { SemanticPill } from '@/components/ui/SemanticPill';
 
 export function Rwa3dLandingPage() {
   const {
+    isAuthenticated,
     protocolState,
     setIsAuthModalOpen,
     setIsFaucetModalOpen,

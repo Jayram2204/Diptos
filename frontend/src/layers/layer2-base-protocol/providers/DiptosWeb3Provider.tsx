@@ -304,7 +304,51 @@ function DynamicOnchainIdentityBridge({
   // Subscribe to window.ethereum accountsChanged and chainChanged for zero-reload live updates
   useEffect(() => {
     const eth = getInjectedEthereum();
-    if (!eth?.on) return;
+    if (!eth) return;
+
+    const syncInitialConnectedAccount = async () => {
+      try {
+        const accountsRaw = await eth.request?.({ method: 'eth_accounts' });
+        const list = Array.isArray(accountsRaw) ? (accountsRaw as string[]) : [];
+        if (list.length > 0) {
+          const initialAddr = list[0] as Address;
+          setIsAuthenticated(true);
+          setAuthMethod('browser-wallet');
+          setWalletExecutionMode('external-eoa');
+          setCustomEoaAddress(initialAddr);
+          setAuthIdentifier(`MetaMask (${initialAddr.slice(0, 6)}...${initialAddr.slice(-4)})`);
+
+          try {
+            const hexChain = await eth.request?.({ method: 'eth_chainId' });
+            const parsedChain =
+              typeof hexChain === 'string' && hexChain.startsWith('0x')
+                ? parseInt(hexChain, 16)
+                : Number(hexChain);
+            if (!Number.isNaN(parsedChain) && parsedChain > 0) {
+              setChainId(parsedChain);
+            }
+          } catch {
+            // Ignore chainId query errors
+          }
+
+          const providerIdentity = await queryOnChainIdentityViaProvider({
+            ethereum: eth,
+            address: initialAddr,
+            identityRegistryAddress: protocolState?.contracts.IDENTITY_REGISTRY,
+          });
+          if (providerIdentity) {
+            setDirectOnChainIdentity(providerIdentity);
+          }
+          await refreshProtocolState(initialAddr);
+        }
+      } catch {
+        // Ignore if eth_accounts is unavailable
+      }
+    };
+
+    void syncInitialConnectedAccount();
+
+    if (!eth.on) return;
 
     const handleAccountsChanged = async (accountsParam: unknown) => {
       const list = Array.isArray(accountsParam) ? (accountsParam as string[]) : [];
