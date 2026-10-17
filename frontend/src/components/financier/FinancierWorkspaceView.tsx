@@ -1,10 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import {
-  DIPTOS_TRANCHE_VAULTS,
-  type RWAInvoiceRecord,
-} from '@/layers/layer1-rwa-core';
+import type { RWAInvoiceRecord } from '@/layers/layer1-rwa-core';
 import {
   DIPTOS_CONTRACT_ADDRESSES,
   SETTLEMENT_ESCROW_ABI,
@@ -24,13 +21,49 @@ export function FinancierWorkspaceView({
   onFundInvoice,
   onInspectAudit,
 }: FinancierWorkspaceViewProps) {
-  const { executeSponsoredTx, isAuthenticated, login } = useDiptosIdentity();
+  const {
+    executeSponsoredTx,
+    executeOnchainAction,
+    isAuthenticated,
+    login,
+    protocolState,
+  } = useDiptosIdentity();
+
   const [fundingInvoiceId, setFundingInvoiceId] = useState<string | null>(null);
+  const [depositingTranche, setDepositingTranche] = useState<string | null>(null);
+  const [depositAmounts, setDepositAmounts] = useState<Record<string, string>>({
+    SENIOR_DROP: '250000',
+    JUNIOR_TIN: '100000',
+  });
   const [dvpReceipt, setDvpReceipt] = useState<{
     invoiceNumber: string;
     hash: string;
     executionMode: string;
   } | null>(null);
+
+  const liveVaults = protocolState?.vaults ?? [];
+
+  const handleDepositVault = async (trancheId: string) => {
+    if (!isAuthenticated) {
+      login();
+      return;
+    }
+    setDepositingTranche(trancheId);
+    try {
+      const amountUsd = Number(depositAmounts[trancheId] || 250000);
+      const res = await executeOnchainAction('DEPOSIT_VAULT', {
+        tranche: trancheId,
+        amountUsd,
+      });
+      setDvpReceipt({
+        invoiceNumber: `${trancheId} Vault Deposit ($${amountUsd.toLocaleString()})`,
+        hash: res.hash,
+        executionMode: res.executionMode,
+      });
+    } finally {
+      setDepositingTranche(null);
+    }
+  };
 
   const handleFundAtomicDvP = async (invoice: RWAInvoiceRecord) => {
     if (!isAuthenticated) {
@@ -42,16 +75,19 @@ export function FinancierWorkspaceView({
     try {
       const math = calculateInvoiceDiscountMath(invoice);
       const discountedMinorUnits = BigInt(math.netSupplierPayoutUsd) * 100n;
+      const escrowAddr =
+        protocolState?.contracts.SETTLEMENT_ESCROW ??
+        DIPTOS_CONTRACT_ADDRESSES.SETTLEMENT_ESCROW;
 
       const result = await executeSponsoredTx({
-        to: DIPTOS_CONTRACT_ADDRESSES.SETTLEMENT_ESCROW,
+        to: escrowAddr,
         abi: SETTLEMENT_ESCROW_ABI,
         functionName: 'fundInvoiceDvP',
         args: [
           invoice.canonicalHash,
           invoice.sellerAddress,
           discountedMinorUnits,
-          invoice.faceValueMinorUnits,
+          BigInt(invoice.faceValueMinorUnits),
         ],
       });
 
@@ -66,6 +102,24 @@ export function FinancierWorkspaceView({
     }
   };
 
+  const handleSettleInvoice = async (invoice: RWAInvoiceRecord) => {
+    setFundingInvoiceId(invoice.id);
+    try {
+      const res = await executeOnchainAction('SETTLE_INVOICE', {
+        canonicalHash: invoice.canonicalHash,
+        faceValueMinorUnits: invoice.faceValueMinorUnits,
+      });
+      onFundInvoice(invoice.id, res.hash, res.executionMode);
+      setDvpReceipt({
+        invoiceNumber: `${invoice.invoiceNumber} Settled & Burned`,
+        hash: res.hash,
+        executionMode: res.executionMode,
+      });
+    } finally {
+      setFundingInvoiceId(null);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {dvpReceipt && (
@@ -73,14 +127,14 @@ export function FinancierWorkspaceView({
           <div>
             <div className="flex items-center gap-2">
               <SemanticPill variant="blue">
-                ATOMIC DvP SETTLEMENT ESCROW EXECUTED ({dvpReceipt.executionMode.toUpperCase()})
+                ON-CHAIN TRANSACTION EXECUTED ({dvpReceipt.executionMode.toUpperCase()})
               </SemanticPill>
               <span className="text-[13px] font-semibold text-[#0F172A]">
-                ERC-3643 Note {dvpReceipt.invoiceNumber} Transferred to Financier Vault
+                {dvpReceipt.invoiceNumber} Confirmed on Base L2
               </span>
             </div>
             <div className="mt-1 font-mono text-[11px] text-[#1D4ED8] break-all">
-              Base SettlementEscrow.sol Tx: {dvpReceipt.hash}
+              Base L2 Tx: {dvpReceipt.hash}
             </div>
           </div>
           <button
@@ -93,9 +147,9 @@ export function FinancierWorkspaceView({
         </div>
       )}
 
-      {/* Top Row: Centrifuge & Maple-Inspired ERC-4626 Senior DROP & Junior First-Loss TIN Cards */}
+      {/* Top Row: Live On-Chain ERC-4626 Senior DROP & Junior First-Loss TIN Cards */}
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-        {DIPTOS_TRANCHE_VAULTS.map((vault) => (
+        {liveVaults.map((vault) => (
           <div
             key={vault.id}
             className="rounded-xl border border-[#E2E8F0] bg-[#FFFFFF] p-6 shadow-[0_1px_2px_rgba(15,23,42,0.03)]"
@@ -125,9 +179,9 @@ export function FinancierWorkspaceView({
 
             <div className="mt-4 grid grid-cols-3 gap-4 border-y border-[#E2E8F0] py-3 font-mono text-[12px] tabular-nums">
               <div>
-                <div className="text-[10px] uppercase text-[#64748B]">Tranche TVL</div>
+                <div className="text-[10px] uppercase text-[#64748B]">Live Tranche TVL</div>
                 <div className="mt-0.5 font-bold text-[#0F172A]">
-                  ${(vault.tvlUsd / 1_000_000).toFixed(2)}M
+                  ${vault.tvlUsd.toLocaleString('en-US')}
                 </div>
               </div>
               <div>
@@ -144,7 +198,33 @@ export function FinancierWorkspaceView({
               </div>
             </div>
 
-            <div className="mt-4 flex items-center justify-between text-[11px] text-[#64748B]">
+            {/* Live Vault Deposit Controls */}
+            <div className="mt-4 flex items-center gap-2">
+              <input
+                type="number"
+                value={depositAmounts[vault.id] || '250000'}
+                onChange={(e) =>
+                  setDepositAmounts((prev) => ({
+                    ...prev,
+                    [vault.id]: e.target.value,
+                  }))
+                }
+                className="w-36 rounded-lg border border-[#CBD5E1] bg-[#F8FAFC] px-3 py-1.5 font-mono text-xs text-[#0F172A]"
+                placeholder="Amount USD"
+              />
+              <button
+                type="button"
+                disabled={depositingTranche === vault.id}
+                onClick={() => handleDepositVault(vault.id)}
+                className="flex-1 rounded-lg bg-[#0A2540] px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-[#1E293B] disabled:opacity-50 cursor-pointer"
+              >
+                {depositingTranche === vault.id
+                  ? 'Depositing On-Chain...'
+                  : `Deposit dUSDC into ${vault.symbol}`}
+              </button>
+            </div>
+
+            <div className="mt-3 flex items-center justify-between text-[11px] text-[#64748B]">
               <span className="font-mono">
                 Vault: {vault.erc4626VaultAddress.slice(0, 10)}...
                 {vault.erc4626VaultAddress.slice(-6)}
@@ -239,18 +319,29 @@ export function FinancierWorkspaceView({
                         >
                           ZK / EAS Proof
                         </button>
-                        <button
-                          type="button"
-                          disabled={isFunding || invoice.status === 'FACTORED'}
-                          onClick={() => handleFundAtomicDvP(invoice)}
-                          className="rounded-md bg-[#0A2540] px-3 py-1.5 text-[12px] font-semibold text-[#FFFFFF] hover:bg-[#0F172A] disabled:opacity-50 cursor-pointer"
-                        >
-                          {invoice.status === 'FACTORED'
-                            ? 'Funded in Vault'
-                            : isFunding
-                            ? 'Funding DvP...'
-                            : 'Fund Atomic DvP'}
-                        </button>
+                        {invoice.status === 'FACTORED' ? (
+                          <button
+                            type="button"
+                            disabled={isFunding}
+                            onClick={() => handleSettleInvoice(invoice)}
+                            className="rounded-md bg-[#059669] px-3 py-1.5 text-[12px] font-semibold text-[#FFFFFF] hover:bg-[#047857] disabled:opacity-50 cursor-pointer"
+                          >
+                            {isFunding ? 'Settling...' : 'Settle Maturity'}
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            disabled={isFunding || invoice.status === 'SETTLED'}
+                            onClick={() => handleFundAtomicDvP(invoice)}
+                            className="rounded-md bg-[#0A2540] px-3 py-1.5 text-[12px] font-semibold text-[#FFFFFF] hover:bg-[#0F172A] disabled:opacity-50 cursor-pointer"
+                          >
+                            {invoice.status === 'SETTLED'
+                              ? 'Settled ✓'
+                              : isFunding
+                              ? 'Funding DvP...'
+                              : 'Fund Atomic DvP'}
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

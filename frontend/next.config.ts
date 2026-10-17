@@ -2,6 +2,9 @@ import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  experimental: {
+    optimizePackageImports: ['lucide-react', 'viem', 'wagmi'],
+  },
   webpack: (config) => {
     config.resolve.fallback = {
       ...config.resolve.fallback,

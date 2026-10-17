@@ -61,13 +61,13 @@ export interface RWAInvoiceRecord {
   buyerAddress: Address;
   currency: ISO4217Currency;
   faceValueUsd: number;
-  faceValueMinorUnits: bigint;
-  discountRateAprBps: number; // e.g., 960 = 9.60% APR
-  platformFeeBps: number; // e.g., 10 = 0.10%
+  faceValueMinorUnits: bigint | string;
+  discountRateAprBps: number;
+  platformFeeBps: number;
   tenorDays: number;
-  issueDate: string; // YYYY-MM-DD
-  dueDate: string; // YYYY-MM-DD
-  dueDateUnix: bigint;
+  issueDate: string;
+  dueDate: string;
+  dueDateUnix: bigint | string;
   canonicalHash: Hex;
   easOriginationUid: Hex;
   easBuyerAcceptanceUid: Hex;
@@ -98,5 +98,5 @@ export interface TrancheVaultPool {
   activeInvoicesCount: number;
   erc4626VaultAddress: Address;
   erc3643ComplianceModule: Address;
-  monthlyPerformance2026: { month: string; returnPercent: string }[];
+  monthlyPerformance2026?: { month: string; returnPercent: string }[];
 }

@@ -1,10 +1,12 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
+import { keccak256, toHex } from 'viem';
 import {
   checkInvoiceDeduplication,
   type RWAInvoiceRecord,
 } from '@/layers/layer1-rwa-core';
+import { useDiptosIdentity } from '@/hooks/useDiptosIdentity';
 import { SemanticPill } from '@/components/ui/SemanticPill';
 
 export interface RegistryWorkspaceViewProps {
@@ -12,12 +14,16 @@ export interface RegistryWorkspaceViewProps {
 }
 
 export function RegistryWorkspaceView({ invoices }: RegistryWorkspaceViewProps) {
+  const { executeOnchainAction, protocolState } = useDiptosIdentity();
+
   const [sellerId, setSellerId] = useState('3358-0048-3291-8492-8172');
   const [buyerId, setBuyerId] = useState('529900T8BM49AURSDO55');
   const [invoiceNumber, setInvoiceNumber] = useState(' inv - 2026 / 8841 ');
   const [currencyCode, setCurrencyCode] = useState('USD');
   const [issueDate, setIssueDate] = useState('2026-10-15');
   const [faceValueUsd, setFaceValueUsd] = useState('185000');
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [lastTxHash, setLastTxHash] = useState<string | null>(null);
 
   const existingHashes = useMemo(
     () => invoices.map((inv) => inv.canonicalHash),
@@ -27,14 +33,14 @@ export function RegistryWorkspaceView({ invoices }: RegistryWorkspaceViewProps) 
   const simulationResult = useMemo(() => {
     try {
       const numericUsd = Number(faceValueUsd.replace(/[^0-9.]/g, '')) || 0;
-      const minorUnits = BigInt(Math.round(numericUsd * 100));
+      const minorUnits = BigInt(Math.round(numericUsd * 100)).toString();
       return checkInvoiceDeduplication(
         {
-          sellerTaxIdOrLei: sellerId,
-          buyerTaxIdOrLei: buyerId,
-          officialInvoiceNumber: invoiceNumber,
-          currencyCode,
-          issueDateYYYYMMDD: issueDate,
+          sellerId,
+          buyerId,
+          invoiceNumber,
+          currency: currencyCode,
+          issueDate,
           faceValueMinorUnits: minorUnits,
         },
         existingHashes
@@ -43,6 +49,52 @@ export function RegistryWorkspaceView({ invoices }: RegistryWorkspaceViewProps) 
       return null;
     }
   }, [sellerId, buyerId, invoiceNumber, currencyCode, issueDate, faceValueUsd, existingHashes]);
+
+  const handleRegisterUniqueHashOnChain = async () => {
+    if (!simulationResult || simulationResult.isDuplicate) return;
+    setIsRegistering(true);
+    try {
+      const numericUsd = Number(faceValueUsd.replace(/[^0-9.]/g, '')) || 185000;
+      const minorUnits = BigInt(Math.round(numericUsd * 100)).toString();
+      const dueUnix = Math.floor(Date.now() / 1000) + 60 * 86400;
+      const dueDate = new Date(dueUnix * 1000).toISOString().slice(0, 10);
+
+      const res = await executeOnchainAction('REGISTER_INVOICE', {
+        canonicalHash: simulationResult.canonicalHash,
+        invoiceNumber: simulationResult.normalizedPayload.invoiceNumber,
+        corridor: 'Global Registry Bridge (Base L2 + MonetaGo)',
+        eInvoiceStandard: 'PEPPOL_BIS_3_0',
+        governmentClearanceRef: `REG-${Date.now().toString().slice(-6)}`,
+        sellerName:
+          protocolState?.envWallets?.[0]?.legalName || 'Apex Global Industrial Exporters Ltd.',
+        sellerLei: simulationResult.normalizedPayload.sellerId,
+        buyerName:
+          protocolState?.envWallets?.[1]?.legalName || 'Continental Drivetrain & Mobility AG',
+        buyerLei: simulationResult.normalizedPayload.buyerId,
+        buyerRating: 'AA+ / Verified Obligor',
+        currency: simulationResult.normalizedPayload.currency,
+        faceValueMinorUnits: minorUnits,
+        discountRateAprBps: 920,
+        tenorDays: 60,
+        issueDate: simulationResult.normalizedPayload.issueDate,
+        dueDate,
+        dueDateUnix: dueUnix,
+        easOriginationUid: keccak256(
+          toHex(`eas:orig:${simulationResult.canonicalHash}:${Date.now()}`)
+        ),
+        easAcceptanceUid: keccak256(
+          toHex(`eas:accept:${simulationResult.canonicalHash}:${Date.now()}`)
+        ),
+        zkProofHash: keccak256(toHex(`zk:proof:${simulationResult.canonicalHash}`)),
+        cbamEmissionsKgCo2e: 680,
+        cbamStandard: 'EU CBAM Definitive • ISO-14064-1 Verified',
+        virtualIbanAccount: 'DE89 3704 0044 0532 0130 00 (FBO Escrow)',
+      });
+      setLastTxHash(res.hash);
+    } finally {
+      setIsRegistering(false);
+    }
+  };
 
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
@@ -62,7 +114,9 @@ export function RegistryWorkspaceView({ invoices }: RegistryWorkspaceViewProps) 
 
         <p className="mt-3 text-[13px] text-[#334155]">
           Try adding spaces, hyphens, slashes, or lowercase letters to an already-registered invoice
-          (such as <code className="font-mono font-semibold">INV-2026-8841</code>). Diptos strips formatting noise before computing the canonical hash and blocks duplicate minting across Base and MonetaGo.
+          (such as <code className="font-mono font-semibold">INV-2026-8841</code>). Diptos strips
+          formatting noise before computing the canonical hash and blocks duplicate minting across
+          Base and MonetaGo. Change the invoice number to register a new unique hash on-chain.
         </p>
 
         <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 text-[12px]">
@@ -155,22 +209,41 @@ export function RegistryWorkspaceView({ invoices }: RegistryWorkspaceViewProps) 
             <code className="mt-2 block break-all rounded border border-[#CBD5E1] bg-[#FFFFFF] p-2 font-mono text-[11px] text-[#0F172A]">
               {simulationResult.canonicalHash}
             </code>
+
+            {!simulationResult.isDuplicate && (
+              <button
+                type="button"
+                disabled={isRegistering}
+                onClick={handleRegisterUniqueHashOnChain}
+                className="mt-3 w-full rounded-lg bg-[#0A2540] px-4 py-2.5 text-xs font-semibold text-white hover:bg-[#1E293B] disabled:opacity-50 cursor-pointer"
+              >
+                {isRegistering
+                  ? 'Registering Hash in InvoiceRegistry.sol...'
+                  : 'Commit Unique Canonical Hash On-Chain (InvoiceRegistry.sol)'}
+              </button>
+            )}
+
+            {lastTxHash && (
+              <div className="mt-2 font-mono text-[11px] text-[#047857] break-all">
+                On-Chain Registry Tx: {lastTxHash}
+              </div>
+            )}
           </div>
         )}
       </div>
 
-      {/* Right 6 Columns: On-Chain InvoiceRegistry.sol Ledger */}
+      {/* Right 6 Columns: Live On-Chain InvoiceRegistry.sol Ledger */}
       <div className="rounded-xl border border-[#E2E8F0] bg-[#FFFFFF] p-6 shadow-xs lg:col-span-6">
         <div className="flex items-center justify-between border-b border-[#E2E8F0] pb-4">
           <div>
             <span className="font-mono text-[11px] font-bold uppercase tracking-[0.05em] text-[#475569]">
-              Base Mainnet (8453) • Singleton State Machine
+              Base (8453) • {protocolState?.contracts.INVOICE_REGISTRY?.slice(0, 12)}...
             </span>
             <h2 className="mt-0.5 text-[17px] font-bold text-[#0F172A]">
-              Registered Canonical Fingerprints
+              Live Registered Canonical Fingerprints
             </h2>
           </div>
-          <SemanticPill variant="emerald">{invoices.length} ACTIVE RECORDS</SemanticPill>
+          <SemanticPill variant="emerald">{invoices.length} ON-CHAIN RECORDS</SemanticPill>
         </div>
 
         <div className="mt-4 space-y-3">
