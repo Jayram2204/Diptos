@@ -26,19 +26,33 @@ export function AuthConnectModal() {
     activeEnvKeyId,
     protocolState,
     authenticateWithMethod,
+    connectMetaMaskWallet,
   } = useDiptosIdentity();
 
-  const [selectedTab, setSelectedTab] = useState<AuthLoginMethod>('env-wallet');
-  const [emailInput, setEmailInput] = useState('treasury@apex-global-trade.sg');
-  const [phoneInput, setPhoneInput] = useState('+65 8129 4401');
+  const [selectedTab, setSelectedTab] = useState<AuthLoginMethod>('browser-wallet');
+  const [emailInput, setEmailInput] = useState('');
+  const [phoneInput, setPhoneInput] = useState('');
   const [otpSent, setOtpSent] = useState(false);
-  const [otpCode, setOtpCode] = useState('845301');
+  const [otpCode, setOtpCode] = useState('');
   const [isBusy, setIsBusy] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   if (!isAuthModalOpen) return null;
 
   const envWallets = protocolState?.envWallets ?? [];
+
+  const handleBrowserWalletConnect = async () => {
+    setErrorMsg(null);
+    setIsBusy(true);
+    try {
+      await connectMetaMaskWallet();
+      setIsAuthModalOpen(false);
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : 'Browser wallet connection failed');
+    } finally {
+      setIsBusy(false);
+    }
+  };
 
   const handleSelectEnvWallet = async (keyId: 'supplier' | 'buyer' | 'financier') => {
     setErrorMsg(null);
@@ -97,8 +111,8 @@ export function AuthConnectModal() {
               rp: { name: 'Diptos Institutional RWA Protocol' },
               user: {
                 id: new Uint8Array(16),
-                name: 'cfo@diptos.xyz',
-                displayName: 'Diptos Institutional Treasury Signer',
+                name: 'signer@diptos.xyz',
+                displayName: 'Diptos Treasury Signer',
               },
               pubKeyCredParams: [{ alg: -7, type: 'public-key' }],
               timeout: 15000,
@@ -109,7 +123,7 @@ export function AuthConnectModal() {
             credentialId = cred.id;
           }
         } catch {
-          // Fallback to deterministic hardware passkey session on headless/cancelled prompt
+          // Fallback on cancelled prompt
         }
       }
       await authenticateWithMethod({
@@ -124,47 +138,9 @@ export function AuthConnectModal() {
     }
   };
 
-  const handleBrowserWalletConnect = async () => {
-    setErrorMsg(null);
-    setIsBusy(true);
-    try {
-      const ethProvider =
-        typeof window !== 'undefined'
-          ? (window as unknown as {
-              ethereum?: {
-                request: (args: { method: string }) => Promise<string[]>;
-              };
-            }).ethereum
-          : undefined;
-
-      if (!ethProvider) {
-        throw new Error(
-          'No injected browser wallet (MetaMask / Coinbase Wallet) detected in window.ethereum. Use the .env Base/ETH Wallets, Passkey, or Email OTP tab.'
-        );
-      }
-
-      const accounts = await ethProvider.request({ method: 'eth_requestAccounts' });
-      const primary = accounts?.[0];
-      if (!primary) {
-        throw new Error('Browser wallet returned no active accounts.');
-      }
-
-      await authenticateWithMethod({
-        method: 'browser-wallet',
-        identifier: primary,
-      });
-      setIsAuthModalOpen(false);
-    } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : 'Browser wallet connection failed');
-    } finally {
-      setIsBusy(false);
-    }
-  };
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0F172A]/60 backdrop-blur-xs p-4">
       <div className="w-full max-w-2xl rounded-xl border border-[#E2E8F0] bg-white shadow-xl overflow-hidden">
-        {/* Modal Header */}
         <div className="flex items-center justify-between border-b border-[#E2E8F0] bg-[#F8FAFC] px-5 py-4">
           <div className="flex items-center gap-2.5">
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#0A2540] text-white">
@@ -172,10 +148,10 @@ export function AuthConnectModal() {
             </div>
             <div>
               <h2 className="text-sm font-bold text-[#0F172A]">
-                Diptos Multi-Method Institutional Auth &amp; Wallet Gateway
+                Connect MetaMask / Institutional Auth Gateway
               </h2>
               <p className="text-xs text-[#475569]">
-                ERC-4337 Account Abstraction • GLEIF vLEI Binding • Base L2 (Chain ID 8453)
+                MetaMask (window.ethereum) • .env Base/ETH Wallets • Passkey • Email &amp; SMS OTP
               </p>
             </div>
           </div>
@@ -188,8 +164,24 @@ export function AuthConnectModal() {
           </button>
         </div>
 
-        {/* Method Tabs */}
+        {/* Method Tabs — MetaMask First */}
         <div className="grid grid-cols-5 gap-1 border-b border-[#E2E8F0] bg-[#F1F5F9] p-1.5 text-xs font-semibold">
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedTab('browser-wallet');
+              setOtpSent(false);
+              setErrorMsg(null);
+            }}
+            className={`flex items-center justify-center gap-1.5 rounded-md py-2 transition-colors ${
+              selectedTab === 'browser-wallet'
+                ? 'bg-[#0A2540] text-white shadow-xs'
+                : 'text-[#475569] hover:text-[#0F172A]'
+            }`}
+          >
+            <Wallet className="h-3.5 w-3.5" />
+            MetaMask / EOA
+          </button>
           <button
             type="button"
             onClick={() => {
@@ -205,6 +197,22 @@ export function AuthConnectModal() {
           >
             <KeyRound className="h-3.5 w-3.5" />
             .env Wallets
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedTab('webauthn-passkey');
+              setOtpSent(false);
+              setErrorMsg(null);
+            }}
+            className={`flex items-center justify-center gap-1.5 rounded-md py-2 transition-colors ${
+              selectedTab === 'webauthn-passkey'
+                ? 'bg-[#0A2540] text-white shadow-xs'
+                : 'text-[#475569] hover:text-[#0F172A]'
+            }`}
+          >
+            <Fingerprint className="h-3.5 w-3.5" />
+            Passkey
           </button>
           <button
             type="button"
@@ -238,43 +246,9 @@ export function AuthConnectModal() {
             <Smartphone className="h-3.5 w-3.5" />
             SMS OTP
           </button>
-          <button
-            type="button"
-            onClick={() => {
-              setSelectedTab('webauthn-passkey');
-              setOtpSent(false);
-              setErrorMsg(null);
-            }}
-            className={`flex items-center justify-center gap-1.5 rounded-md py-2 transition-colors ${
-              selectedTab === 'webauthn-passkey'
-                ? 'bg-[#0A2540] text-white shadow-xs'
-                : 'text-[#475569] hover:text-[#0F172A]'
-            }`}
-          >
-            <Fingerprint className="h-3.5 w-3.5" />
-            Passkey
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setSelectedTab('browser-wallet');
-              setOtpSent(false);
-              setErrorMsg(null);
-            }}
-            className={`flex items-center justify-center gap-1.5 rounded-md py-2 transition-colors ${
-              selectedTab === 'browser-wallet'
-                ? 'bg-[#0A2540] text-white shadow-xs'
-                : 'text-[#475569] hover:text-[#0F172A]'
-            }`}
-          >
-            <Wallet className="h-3.5 w-3.5" />
-            MetaMask / EOA
-          </button>
         </div>
 
-        {/* Modal Body */}
         <div className="p-5 space-y-4">
-          {/* Active Session Banner */}
           <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-3.5 py-2.5 text-xs">
             <div>
               <span className="font-semibold text-[#475569]">Active Session: </span>
@@ -293,14 +267,35 @@ export function AuthConnectModal() {
             </div>
           )}
 
-          {/* TAB 1: .env Base & ETH Wallets */}
+          {/* TAB 1: MetaMask / Browser Wallet */}
+          {selectedTab === 'browser-wallet' && (
+            <div className="space-y-3">
+              <p className="text-xs text-[#475569]">
+                Triggers the MetaMask (<code className="font-mono">window.ethereum</code>) account
+                selection and cryptographic signature popup, registers your address in{' '}
+                <code className="font-mono">IdentityRegistry.sol</code>, and funds it from the
+                Base/ETH Faucet.
+              </p>
+              <button
+                type="button"
+                disabled={isBusy}
+                onClick={handleBrowserWalletConnect}
+                className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#0A2540] px-4 py-3 text-xs font-semibold text-white hover:bg-[#1E293B] disabled:opacity-50 cursor-pointer"
+              >
+                <Wallet className="h-4 w-4 text-[#14B8A6]" />
+                {isBusy
+                  ? 'Waiting for MetaMask Popup Confirmation...'
+                  : 'Open MetaMask Popup & Connect Wallet'}
+              </button>
+            </div>
+          )}
+
+          {/* TAB 2: .env Base & ETH Wallets */}
           {selectedTab === 'env-wallet' && (
             <div className="space-y-3">
               <p className="text-xs text-[#475569]">
-                Select one of the pre-configured Base/ETH institutional accounts from{' '}
-                <code className="font-mono text-[#0F172A]">.env.local</code>. Each wallet is
-                registered in <code className="font-mono text-[#0F172A]">IdentityRegistry.sol</code>{' '}
-                and funded via the on-chain Faucet.
+                Select one of the Base/ETH accounts configured in{' '}
+                <code className="font-mono text-[#0F172A]">.env.local</code>:
               </p>
               <div className="space-y-2.5">
                 {envWallets.map((w) => {
@@ -333,7 +328,7 @@ export function AuthConnectModal() {
                           {w.address} • vLEI: {w.vlei}
                         </p>
                         <div className="flex items-center gap-3 font-mono text-[11px] tabular-nums">
-                          <span className=" font-semibold text-[#059669]">
+                          <span className="font-semibold text-[#059669]">
                             {w.usdcBalanceFormatted} dUSDC
                           </span>
                           <span className="text-[#475569]">{w.ethBalanceFormatted} ETH</span>
@@ -354,34 +349,52 @@ export function AuthConnectModal() {
             </div>
           )}
 
-          {/* TAB 2: Email OTP */}
-          {selectedTab === 'email-otp' && (
+          {/* TAB 3: WebAuthn Passkey */}
+          {selectedTab === 'webauthn-passkey' && (
             <div className="space-y-3">
               <p className="text-xs text-[#475569]">
-                Authenticate with your corporate email address. Diptos provisions a gas-sponsored
-                ERC-4337 Smart Account on Base L2 and registers your GLEIF vLEI identity on-chain.
+                Sign transactions using your device&apos;s hardware Secure Enclave (Apple TouchID /
+                FaceID, Windows Hello, or YubiKey FIDO2).
               </p>
+              <button
+                type="button"
+                disabled={isBusy}
+                onClick={handlePasskeyAuth}
+                className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#0A2540] px-4 py-2.5 text-xs font-semibold text-white hover:bg-[#1E293B] disabled:opacity-50"
+              >
+                <Fingerprint className="h-4 w-4 text-[#14B8A6]" />
+                {isBusy
+                  ? 'Verifying Hardware Passkey...'
+                  : 'Authenticate with Biometric Passkey (WebAuthn)'}
+              </button>
+            </div>
+          )}
+
+          {/* TAB 4: Email OTP */}
+          {selectedTab === 'email-otp' && (
+            <div className="space-y-3">
               <div>
                 <label className="block text-xs font-semibold text-[#0F172A] mb-1">
-                  Corporate Treasury Email
+                  Corporate Email Address
                 </label>
                 <input
                   type="email"
                   value={emailInput}
                   onChange={(e) => setEmailInput(e.target.value)}
                   className="w-full rounded-lg border border-[#CBD5E1] bg-white px-3 py-2 text-sm text-[#0F172A]"
-                  placeholder="cfo@enterprise.com"
+                  placeholder="Enter corporate email"
                 />
               </div>
               {otpSent && (
                 <div>
                   <label className="block text-xs font-semibold text-[#0F172A] mb-1">
-                    6-Digit Security Code (Dispatched to {emailInput})
+                    6-Digit OTP Code
                   </label>
                   <input
                     type="text"
                     value={otpCode}
                     onChange={(e) => setOtpCode(e.target.value)}
+                    placeholder="Enter 6-digit code"
                     className="w-full rounded-lg border border-[#CBD5E1] bg-white px-3 py-2 font-mono text-sm text-[#0F172A]"
                   />
                 </div>
@@ -393,31 +406,27 @@ export function AuthConnectModal() {
                 className="w-full rounded-lg bg-[#0A2540] px-4 py-2.5 text-xs font-semibold text-white hover:bg-[#1E293B] disabled:opacity-50"
               >
                 {isBusy
-                  ? 'Provisioning ERC-4337 Smart Account On-Chain...'
+                  ? 'Provisioning ERC-4337 Smart Account...'
                   : otpSent
-                  ? 'Verify OTP & Provision On-Chain Identity'
-                  : 'Send Corporate Email OTP'}
+                  ? 'Verify OTP & Connect'
+                  : 'Send Email OTP'}
               </button>
             </div>
           )}
 
-          {/* TAB 3: SMS OTP */}
+          {/* TAB 5: SMS OTP */}
           {selectedTab === 'sms-otp' && (
             <div className="space-y-3">
-              <p className="text-xs text-[#475569]">
-                Authenticate via mobile SMS verification for SME exporter accounts without hardware
-                wallets. Automatically creates an ERC-4337 Smart Account on Base L2.
-              </p>
               <div>
                 <label className="block text-xs font-semibold text-[#0F172A] mb-1">
-                  Authorized Mobile Number (E.164)
+                  Mobile Number
                 </label>
                 <input
                   type="tel"
                   value={phoneInput}
                   onChange={(e) => setPhoneInput(e.target.value)}
                   className="w-full rounded-lg border border-[#CBD5E1] bg-white px-3 py-2 font-mono text-sm text-[#0F172A]"
-                  placeholder="+65 8129 4401"
+                  placeholder="Enter mobile number"
                 />
               </div>
               {otpSent && (
@@ -429,6 +438,7 @@ export function AuthConnectModal() {
                     type="text"
                     value={otpCode}
                     onChange={(e) => setOtpCode(e.target.value)}
+                    placeholder="Enter SMS code"
                     className="w-full rounded-lg border border-[#CBD5E1] bg-white px-3 py-2 font-mono text-sm text-[#0F172A]"
                   />
                 </div>
@@ -440,53 +450,10 @@ export function AuthConnectModal() {
                 className="w-full rounded-lg bg-[#0A2540] px-4 py-2.5 text-xs font-semibold text-white hover:bg-[#1E293B] disabled:opacity-50"
               >
                 {isBusy
-                  ? 'Provisioning Smart Account On-Chain...'
+                  ? 'Provisioning Smart Account...'
                   : otpSent
                   ? 'Verify SMS Code & Connect'
                   : 'Send SMS OTP'}
-              </button>
-            </div>
-          )}
-
-          {/* TAB 4: WebAuthn Passkey */}
-          {selectedTab === 'webauthn-passkey' && (
-            <div className="space-y-3">
-              <p className="text-xs text-[#475569]">
-                Sign transactions using your device&apos;s hardware Secure Enclave (Apple TouchID /
-                FaceID, Windows Hello, or YubiKey FIDO2) via RIP-7212 / ERC-4337 P256 signature
-                verification on Base.
-              </p>
-              <button
-                type="button"
-                disabled={isBusy}
-                onClick={handlePasskeyAuth}
-                className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#0A2540] px-4 py-2.5 text-xs font-semibold text-white hover:bg-[#1E293B] disabled:opacity-50"
-              >
-                <Fingerprint className="h-4 w-4 text-[#14B8A6]" />
-                {isBusy
-                  ? 'Verifying Hardware Passkey & Registering On-Chain...'
-                  : 'Authenticate with Biometric Passkey (WebAuthn)'}
-              </button>
-            </div>
-          )}
-
-          {/* TAB 5: Browser Wallet */}
-          {selectedTab === 'browser-wallet' && (
-            <div className="space-y-3">
-              <p className="text-xs text-[#475569]">
-                Connect an external institutional EOA or multisig wallet (`MetaMask`, `Coinbase
-                Wallet`, `Rabby`, or `Safe`) via <code className="font-mono">window.ethereum</code>.
-              </p>
-              <button
-                type="button"
-                disabled={isBusy}
-                onClick={handleBrowserWalletConnect}
-                className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#0A2540] px-4 py-2.5 text-xs font-semibold text-white hover:bg-[#1E293B] disabled:opacity-50"
-              >
-                <Wallet className="h-4 w-4 text-[#14B8A6]" />
-                {isBusy
-                  ? 'Requesting Browser Wallet Signature...'
-                  : 'Connect Browser Wallet (window.ethereum)'}
               </button>
             </div>
           )}

@@ -34,31 +34,31 @@ const ANVIL_FAUCET_KEY =
 // Generated Base & ETH Wallets for .env
 const ENV_WALLETS = {
   supplier: {
-    role: 'Supplier / Exporter (Base & ETH)',
+    role: 'Supplier (.env Wallet)',
     address: '0x89A9314d76ef6EF3E1DC1efE40b704373B2f709b',
     privateKey:
       '0x1cff2dec14c4600cf7be15fa9e72c42f9935931cc96935656f648b6ad9f7cf6b',
-    vlei: '33580048329184928172',
-    legalName: 'Apex Global Industrial Exporters Ltd.',
-    jurisdiction: 'Global Cross-Border (SG / EU / IN / US)',
+    vlei: '54930089A9314D76EF6E',
+    legalName: 'Supplier Account (0x89A9...709b)',
+    jurisdiction: 'Base L2 (8453)',
   },
   buyer: {
-    role: 'Anchor Buyer / Obligor (Base & ETH)',
+    role: 'Buyer (.env Wallet)',
     address: '0x8c12f05ad5030A1F7B27464A99D4800C17D23A0C',
     privateKey:
       '0x6faacfc384b8181cf6741f2993ac65349e77fbee3887fd2674e7f679529788fd',
-    vlei: '529900T8BM49AURSDO55',
-    legalName: 'Continental Drivetrain & Mobility AG',
-    jurisdiction: 'European Union (DE) • CBAM Importer',
+    vlei: '5493008C12F05AD5030A',
+    legalName: 'Buyer Account (0x8c12...3A0C)',
+    jurisdiction: 'Base L2 (8453)',
   },
   financier: {
-    role: 'Institutional Financier & Underwriter (Base & ETH)',
+    role: 'Financier (.env Wallet)',
     address: '0x4c70c6f7889a1520B4453ee0899D9C758c7E1eD0',
     privateKey:
       '0x3e4f878f8ce70a7c7135eb1db18e8cf75da87b69e60add45c5b0ce7433b46707',
-    vlei: '5493001KJTIIGC8Y1R12',
-    legalName: 'Meridian Institutional Trade Credit Fund LP',
-    jurisdiction: 'Delaware (UCC Art. 12) & Singapore MAS',
+    vlei: '5493004C70C6F7889A15',
+    legalName: 'Financier Account (0x4c70...1eD0)',
+    jurisdiction: 'Base L2 (8453)',
   },
 };
 

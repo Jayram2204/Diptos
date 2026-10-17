@@ -7,12 +7,12 @@ import {
   formatDidPkh,
   resolveCorporateVleiProfile,
   type CorporateVleiProfile,
-  type UnderwriterNodeProfile,
-  type W3cVerifiableCredentialRecord,
+  type UnderwriterBondNode,
+  type W3CVerifiableCredentialSummary,
 } from '@/layers/layer3-di-security';
 import type {
-  DiptosInvoiceAsset,
-  Erc4626TrancheVault,
+  RWAInvoiceRecord,
+  TrancheVaultPool,
 } from '@/layers/layer1-rwa-core';
 
 export type DiptosWorkspaceRole = 'supplier' | 'financier' | 'registry' | 'security';
@@ -67,11 +67,11 @@ export interface LiveProtocolState {
     usdcBalance: string;
     isVerifiedOnChain: boolean;
   };
-  invoices: DiptosInvoiceAsset[];
-  vaults: Erc4626TrancheVault[];
+  invoices: RWAInvoiceRecord[];
+  vaults: TrancheVaultPool[];
   identities: OnChainIdentityRecord[];
-  credentials: W3cVerifiableCredentialRecord[];
-  verifierNodes: UnderwriterNodeProfile[];
+  credentials: W3CVerifiableCredentialSummary[];
+  verifierNodes: UnderwriterBondNode[];
 }
 
 export interface ExecuteSponsoredTxParams {
@@ -110,7 +110,7 @@ export type WagmiWriteContractAsyncFn = (args: {
 /**
  * Pure execution dispatcher used by useDiptosIdentity().executeSponsoredTx:
  * 1. Uses Privy's ERC-4337 SmartWallet client (useSmartWallets()) for gas-sponsored Base transactions.
- * 2. Automatically falls back to Wagmi's writeContractAsync for external institutional wallets.
+ * 2. Automatically falls back to Wagmi / window.ethereum EOA signing for external institutional wallets.
  */
 export async function executeTxWithSmartWalletOrWagmi(params: {
   txParams: ExecuteSponsoredTxParams;
@@ -206,6 +206,7 @@ export interface DiptosIdentityContextValue {
     identifier?: string;
     envKeyId?: 'supplier' | 'buyer' | 'financier';
   }) => Promise<void>;
+  connectMetaMaskWallet: () => Promise<Address>;
   isAuthModalOpen: boolean;
   setIsAuthModalOpen: (open: boolean) => void;
   isFaucetModalOpen: boolean;
@@ -256,6 +257,7 @@ export const DiptosIdentityContext = createContext<DiptosIdentityContextValue>({
     newUsdcBalanceFormatted: '500,000',
   }),
   authenticateWithMethod: async () => undefined,
+  connectMetaMaskWallet: async () => DEFAULT_SUPPLIER_ENV_WALLET,
   isAuthModalOpen: false,
   setIsAuthModalOpen: () => undefined,
   isFaucetModalOpen: false,
@@ -270,10 +272,6 @@ export const DiptosIdentityContext = createContext<DiptosIdentityContextValue>({
   }),
 });
 
-/**
- * Custom hook returning Diptos corporate decentralized identity (vLEI + ONCHAINID + did:pkh:eip155:8453:${address}),
- * live dynamic protocol state from Base L2 contracts, multi-method auth controls, Faucet disbursement, and executeSponsoredTx().
- */
 export function useDiptosIdentity(): DiptosIdentityContextValue {
   return useContext(DiptosIdentityContext);
 }

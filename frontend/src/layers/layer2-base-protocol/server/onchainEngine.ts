@@ -42,39 +42,49 @@ export interface EnvWalletAccountInfo {
 }
 
 export function getEnvConfiguredWallets(): EnvWalletAccountInfo[] {
+  const sAddr = (process.env.NEXT_PUBLIC_SUPPLIER_WALLET_ADDRESS ||
+    '0x89A9314d76ef6EF3E1DC1efE40b704373B2f709b') as Address;
+  const bAddr = (process.env.NEXT_PUBLIC_BUYER_WALLET_ADDRESS ||
+    '0x8c12f05ad5030A1F7B27464A99D4800C17D23A0C') as Address;
+  const fAddr = (process.env.NEXT_PUBLIC_FINANCIER_WALLET_ADDRESS ||
+    '0x4c70c6f7889a1520B4453ee0899D9C758c7E1eD0') as Address;
+
   return [
     {
       keyId: 'supplier',
-      label: 'Supplier / Exporter (.env Base/ETH Wallet)',
-      address: (process.env.NEXT_PUBLIC_SUPPLIER_WALLET_ADDRESS ||
-        '0x89A9314d76ef6EF3E1DC1efE40b704373B2f709b') as Address,
+      label: 'Supplier (.env Wallet)',
+      address: sAddr,
       privateKey: (process.env.DIPTOS_SUPPLIER_PRIVATE_KEY ||
         '0x1cff2dec14c4600cf7be15fa9e72c42f9935931cc96935656f648b6ad9f7cf6b') as Hex,
-      vlei: '33580048329184928172',
-      legalName: 'Apex Global Industrial Exporters Ltd.',
-      jurisdiction: 'Global Cross-Border (SG / EU / IN / US)',
+      vlei: process.env.NEXT_PUBLIC_SUPPLIER_VLEI || `549300${sAddr.slice(2, 16).toUpperCase()}`,
+      legalName:
+        process.env.NEXT_PUBLIC_SUPPLIER_NAME ||
+        `Supplier Account (${sAddr.slice(0, 6)}...${sAddr.slice(-4)})`,
+      jurisdiction: process.env.NEXT_PUBLIC_SUPPLIER_JURISDICTION || 'Base L2 (8453)',
     },
     {
       keyId: 'buyer',
-      label: 'Anchor Buyer / Obligor (.env Base/ETH Wallet)',
-      address: (process.env.NEXT_PUBLIC_BUYER_WALLET_ADDRESS ||
-        '0x8c12f05ad5030A1F7B27464A99D4800C17D23A0C') as Address,
+      label: 'Buyer (.env Wallet)',
+      address: bAddr,
       privateKey: (process.env.DIPTOS_BUYER_PRIVATE_KEY ||
         '0x6faacfc384b8181cf6741f2993ac65349e77fbee3887fd2674e7f679529788fd') as Hex,
-      vlei: '529900T8BM49AURSDO55',
-      legalName: 'Continental Drivetrain & Mobility AG',
-      jurisdiction: 'European Union (DE) • CBAM Importer',
+      vlei: process.env.NEXT_PUBLIC_BUYER_VLEI || `549300${bAddr.slice(2, 16).toUpperCase()}`,
+      legalName:
+        process.env.NEXT_PUBLIC_BUYER_NAME ||
+        `Buyer Account (${bAddr.slice(0, 6)}...${bAddr.slice(-4)})`,
+      jurisdiction: process.env.NEXT_PUBLIC_BUYER_JURISDICTION || 'Base L2 (8453)',
     },
     {
       keyId: 'financier',
-      label: 'Institutional Financier (.env Base/ETH Wallet)',
-      address: (process.env.NEXT_PUBLIC_FINANCIER_WALLET_ADDRESS ||
-        '0x4c70c6f7889a1520B4453ee0899D9C758c7E1eD0') as Address,
+      label: 'Financier (.env Wallet)',
+      address: fAddr,
       privateKey: (process.env.DIPTOS_FINANCIER_PRIVATE_KEY ||
         '0x3e4f878f8ce70a7c7135eb1db18e8cf75da87b69e60add45c5b0ce7433b46707') as Hex,
-      vlei: '5493001KJTIIGC8Y1R12',
-      legalName: 'Meridian Institutional Trade Credit Fund LP',
-      jurisdiction: 'Delaware (UCC Art. 12) & Singapore MAS',
+      vlei: process.env.NEXT_PUBLIC_FINANCIER_VLEI || `549300${fAddr.slice(2, 16).toUpperCase()}`,
+      legalName:
+        process.env.NEXT_PUBLIC_FINANCIER_NAME ||
+        `Financier Account (${fAddr.slice(0, 6)}...${fAddr.slice(-4)})`,
+      jurisdiction: process.env.NEXT_PUBLIC_FINANCIER_JURISDICTION || 'Base L2 (8453)',
     },
   ];
 }

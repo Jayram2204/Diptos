@@ -16,14 +16,12 @@ export function SecurityWorkspaceView() {
 
   const [showVcForm, setShowVcForm] = useState(false);
   const [vcType, setVcType] = useState('SupplyChainTier1VendorCredential');
-  const [vcClaimSummary, setVcClaimSummary] = useState(
-    'Verified Tier-1 Exporter • Zero Commercial Disputes • ISO-14064-1 Audited'
-  );
+  const [vcClaimSummary, setVcClaimSummary] = useState('');
 
   const [showBondForm, setShowBondForm] = useState(false);
-  const [operatorName, setOperatorName] = useState('Aegis Institutional RWA Underwriter Node');
-  const [operatorRole, setOperatorRole] = useState('Pool Underwriter & Tax Portal Verifier');
-  const [bondAmountUsd, setBondAmountUsd] = useState('450000');
+  const [operatorName, setOperatorName] = useState('');
+  const [operatorRole, setOperatorRole] = useState('');
+  const [bondAmountUsd, setBondAmountUsd] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [txNotice, setTxNotice] = useState<string | null>(null);
 
@@ -38,9 +36,10 @@ export function SecurityWorkspaceView() {
       const res = await executeOnchainAction('ISSUE_CREDENTIAL', {
         vcId: `urn:uuid:vc-${Date.now()}`,
         vcType,
-        claimSummary: vcClaimSummary,
+        claimSummary: vcClaimSummary.trim(),
       });
       setShowVcForm(false);
+      setVcClaimSummary('');
       setTxNotice(`W3C Credential Anchored On-Chain (Tx: ${res.hash})`);
     } finally {
       setIsSubmitting(false);
@@ -52,11 +51,14 @@ export function SecurityWorkspaceView() {
     setIsSubmitting(true);
     try {
       const res = await executeOnchainAction('POST_VERIFIER_BOND', {
-        operatorName,
-        role: operatorRole,
-        amountUsd: Number(bondAmountUsd) || 450000,
+        operatorName: operatorName.trim(),
+        role: operatorRole.trim(),
+        amountUsd: Number(bondAmountUsd),
       });
       setShowBondForm(false);
+      setOperatorName('');
+      setOperatorRole('');
+      setBondAmountUsd('');
       setTxNotice(`Slasher Bond Staked On-Chain (Tx: ${res.hash})`);
     } finally {
       setIsSubmitting(false);
@@ -172,6 +174,7 @@ export function SecurityWorkspaceView() {
                   type="text"
                   value={vcClaimSummary}
                   onChange={(e) => setVcClaimSummary(e.target.value)}
+                  placeholder="Enter verifiable credential claim summary"
                   required
                   className="w-full rounded border border-[#CBD5E1] bg-white px-2.5 py-1.5 text-xs text-[#0F172A]"
                 />
@@ -187,25 +190,31 @@ export function SecurityWorkspaceView() {
           )}
 
           <div className="mt-4 space-y-3">
-            {liveCredentials.map((vc) => (
-              <div
-                key={vc.id}
-                className="rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] p-3.5"
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <span className="font-mono text-[11px] font-bold text-[#0F172A]">
-                    {vc.type[1]}
-                  </span>
-                  <SemanticPill variant="emerald">{vc.status}</SemanticPill>
-                </div>
-                <div className="mt-1 text-[12px] font-medium text-[#0F172A]">
-                  {vc.claimSummary}
-                </div>
-                <div className="mt-1 font-mono text-[11px] text-[#64748B]">
-                  Issuer: {vc.issuerName}
-                </div>
+            {liveCredentials.length === 0 ? (
+              <div className="rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] p-4 text-center text-xs text-[#64748B]">
+                No W3C credentials anchored on-chain yet. Click <strong>+ Issue W3C VC On-Chain</strong> above.
               </div>
-            ))}
+            ) : (
+              liveCredentials.map((vc) => (
+                <div
+                  key={vc.id}
+                  className="rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] p-3.5"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-mono text-[11px] font-bold text-[#0F172A]">
+                      {vc.type[1]}
+                    </span>
+                    <SemanticPill variant="emerald">{vc.status}</SemanticPill>
+                  </div>
+                  <div className="mt-1 text-[12px] font-medium text-[#0F172A]">
+                    {vc.claimSummary}
+                  </div>
+                  <div className="mt-1 font-mono text-[11px] text-[#64748B]">
+                    Issuer: {vc.issuerName}
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
       </div>
@@ -218,8 +227,7 @@ export function SecurityWorkspaceView() {
               Slasher.sol — Accredited Verifier &amp; Pool Underwriter Collateral Bonds
             </h3>
             <p className="text-[13px] text-[#64748B]">
-              Cash-strapped SMEs never post speculative crypto collateral. Economic skin-in-the-game
-              is posted by ingestion relayers and pool underwriters on Base L2.
+              Economic skin-in-the-game posted on-chain by ingestion relayers and pool underwriters on Base L2.
             </p>
           </div>
           <div className="flex items-center gap-2">

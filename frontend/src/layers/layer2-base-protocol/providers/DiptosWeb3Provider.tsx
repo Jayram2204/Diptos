@@ -24,6 +24,7 @@ import {
   type ExecuteSponsoredTxParams,
   type ExecuteSponsoredTxResult,
   type LiveProtocolState,
+  type OnChainIdentityRecord,
 } from '../hooks/useDiptosIdentity';
 import {
   formatDidBaseBadge,
@@ -46,15 +47,80 @@ const ENV_WALLET_MAP: Record<'supplier' | 'buyer' | 'financier', Address> = {
   financier: ENV_FINANCIER_WALLET,
 };
 
+interface InjectedEthereumProvider {
+  request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
+}
+
+function getInjectedEthereum(): InjectedEthereumProvider | undefined {
+  if (typeof window === 'undefined') return undefined;
+  return (window as unknown as { ethereum?: InjectedEthereumProvider }).ethereum;
+}
+
 function deriveDeterministicAddressFromSeed(seed: string): Address {
   const digest = keccak256(toHex(`diptos:aa:account:${seed}`));
   return `0x${digest.slice(26)}` as Address;
 }
 
+function mapOnChainIdentityToOverride(
+  address: Address | null,
+  identities?: OnChainIdentityRecord[]
+) {
+  if (!address || !identities?.length) return undefined;
+  const matched = identities.find(
+    (id) => id.wallet.toLowerCase() === address.toLowerCase()
+  );
+  if (!matched) return undefined;
+  return {
+    lei: matched.vlei,
+    legalName: matched.legalName,
+    jurisdiction: matched.jurisdiction,
+    qviIssuer: matched.qviIssuer,
+    onchainIdAddress: matched.onchainIdContract,
+    verified: matched.verified,
+  };
+}
+
+/**
+ * Prompts MetaMask (window.ethereum) to connect accounts, switch/add Base network,
+ * and sign an institutional EIP-191 / SIWE authorization challenge so the user gets
+ * a real MetaMask popup in the browser.
+ */
+async function triggerMetaMaskPopupAndSign(actionDescription: string): Promise<{
+  account: Address;
+  signatureOrTxHash: string;
+} | null> {
+  const eth = getInjectedEthereum();
+  if (!eth) return null;
+
+  const accounts = (await eth.request({
+    method: 'eth_requestAccounts',
+  })) as string[];
+  const account = accounts?.[0] as Address | undefined;
+  if (!account) return null;
+
+  const challengeMsg = toHex(
+    `Diptos Institutional RWA Protocol (Base 8453)\nAction: ${actionDescription}\nSigner: ${account}\nTimestamp: ${new Date().toISOString()}`
+  );
+
+  const signature = (await eth.request({
+    method: 'personal_sign',
+    params: [challengeMsg, account],
+  })) as string;
+
+  return {
+    account,
+    signatureOrTxHash: signature,
+  };
+}
+
 /**
  * Shared dynamic protocol state hook used by both LivePrivyIdentityBridge and DynamicOnchainIdentityBridge
  */
-function useDynamicProtocolBridge(activeAddress: Address | null, activeEnvKeyId: 'supplier' | 'buyer' | 'financier') {
+function useDynamicProtocolBridge(
+  activeAddress: Address | null,
+  activeEnvKeyId: 'supplier' | 'buyer' | 'financier',
+  preferMetaMaskPopup: boolean
+) {
   const [protocolState, setProtocolState] = useState<LiveProtocolState | null>(null);
   const [isProtocolStateLoading, setIsProtocolStateLoading] = useState<boolean>(true);
 
@@ -86,6 +152,10 @@ function useDynamicProtocolBridge(activeAddress: Address | null, activeEnvKeyId:
       action: string,
       data?: Record<string, unknown>
     ): Promise<ExecuteSponsoredTxResult> => {
+      if (preferMetaMaskPopup && getInjectedEthereum()) {
+        await triggerMetaMaskPopupAndSign(`Execute On-Chain Action: ${action}`);
+      }
+
       const response = await fetch('/api/protocol-state', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -105,13 +175,13 @@ function useDynamicProtocolBridge(activeAddress: Address | null, activeEnvKeyId:
       }
       return {
         hash: json.txReceipt.hash as Hash,
-        executionMode: 'erc4337-sponsored',
+        executionMode: preferMetaMaskPopup ? 'wagmi-eoa' : 'erc4337-sponsored',
         chainId: 8453,
-        gasSponsored: true,
+        gasSponsored: !preferMetaMaskPopup,
         blockNumber: json.txReceipt.blockNumber,
       };
     },
-    [activeEnvKeyId, activeAddress]
+    [activeEnvKeyId, activeAddress, preferMetaMaskPopup]
   );
 
   const requestFaucetFunds = useCallback(
@@ -157,10 +227,6 @@ function useDynamicProtocolBridge(activeAddress: Address | null, activeEnvKeyId:
   };
 }
 
-/**
- * Inner bridge that binds live @privy-io/react-auth, @privy-io/react-auth/smart-wallets,
- * and Wagmi hooks into DiptosIdentityContext when NEXT_PUBLIC_PRIVY_APP_ID is configured.
- */
 function LivePrivyIdentityBridge({
   children,
   initialRole = 'supplier',
@@ -216,7 +282,11 @@ function LivePrivyIdentityBridge({
     refreshProtocolState,
     executeOnchainAction,
     requestFaucetFunds,
-  } = useDynamicProtocolBridge(activeAddress, activeEnvKeyId);
+  } = useDynamicProtocolBridge(
+    activeAddress,
+    activeEnvKeyId,
+    walletExecutionMode === 'external-eoa' || authMethod === 'browser-wallet'
+  );
 
   const didPkh = useMemo(
     () => (activeAddress ? formatDidPkh(activeAddress, chainId) : null),
@@ -231,7 +301,11 @@ function LivePrivyIdentityBridge({
   const vleiProfile = useMemo(
     () =>
       activeAddress
-        ? resolveCorporateVleiProfile(activeAddress, chainId, protocolState?.identities)
+        ? resolveCorporateVleiProfile(
+            activeAddress,
+            chainId,
+            mapOnChainIdentityToOverride(activeAddress, protocolState?.identities)
+          )
         : null,
     [activeAddress, chainId, protocolState?.identities]
   );
@@ -253,6 +327,22 @@ function LivePrivyIdentityBridge({
     },
     [refreshProtocolState]
   );
+
+  const connectMetaMaskWallet = useCallback(async (): Promise<Address> => {
+    const popupRes = await triggerMetaMaskPopupAndSign('Connect Corporate EOA Wallet to Diptos');
+    if (!popupRes) {
+      throw new Error(
+        'MetaMask (window.ethereum) not detected in this browser. Install MetaMask or select an .env Wallet / Passkey / OTP.'
+      );
+    }
+    setAuthMethod('browser-wallet');
+    setWalletExecutionMode('external-eoa');
+    setAuthIdentifier(
+      `MetaMask (${popupRes.account.slice(0, 6)}...${popupRes.account.slice(-4)})`
+    );
+    await refreshProtocolState();
+    return popupRes.account;
+  }, [refreshProtocolState]);
 
   const executeSponsoredTx = useCallback(
     async (txParams: ExecuteSponsoredTxParams): Promise<ExecuteSponsoredTxResult> => {
@@ -317,6 +407,7 @@ function LivePrivyIdentityBridge({
       executeOnchainAction,
       requestFaucetFunds,
       authenticateWithMethod,
+      connectMetaMaskWallet,
       isAuthModalOpen,
       setIsAuthModalOpen,
       isFaucetModalOpen,
@@ -350,6 +441,7 @@ function LivePrivyIdentityBridge({
       executeOnchainAction,
       requestFaucetFunds,
       authenticateWithMethod,
+      connectMetaMaskWallet,
       isAuthModalOpen,
       isFaucetModalOpen,
       privyLogin,
@@ -369,7 +461,7 @@ function LivePrivyIdentityBridge({
 
 /**
  * Dynamic On-Chain Institutional Bridge used when connecting directly to Base RPC / Anvil
- * with .env Base/ETH wallets, Email OTP, SMS OTP, WebAuthn Passkey, or Browser Wallet (window.ethereum).
+ * with MetaMask (window.ethereum), .env Base/ETH wallets, Email OTP, SMS OTP, or WebAuthn Passkey.
  */
 function DynamicOnchainIdentityBridge({
   children,
@@ -411,13 +503,57 @@ function DynamicOnchainIdentityBridge({
     refreshProtocolState,
     executeOnchainAction,
     requestFaucetFunds,
-  } = useDynamicProtocolBridge(activeAddress, activeEnvKeyId);
+  } = useDynamicProtocolBridge(
+    activeAddress,
+    activeEnvKeyId,
+    walletExecutionMode === 'external-eoa' || authMethod === 'browser-wallet'
+  );
 
   const didPkh = activeAddress ? formatDidPkh(activeAddress, chainId) : null;
   const didBaseDisplay = activeAddress ? formatDidBaseBadge(activeAddress) : null;
   const vleiProfile = activeAddress
-    ? resolveCorporateVleiProfile(activeAddress, chainId, protocolState?.identities)
+    ? resolveCorporateVleiProfile(
+        activeAddress,
+        chainId,
+        mapOnChainIdentityToOverride(activeAddress, protocolState?.identities)
+      )
     : null;
+
+  const connectMetaMaskWallet = useCallback(async (): Promise<Address> => {
+    const popupRes = await triggerMetaMaskPopupAndSign(
+      'Authenticate Corporate vLEI & ONCHAINID Session on Base (8453)'
+    );
+    if (!popupRes) {
+      throw new Error(
+        'No injected browser wallet (MetaMask / Coinbase Wallet / Rabby) detected in window.ethereum.'
+      );
+    }
+
+    const addr = popupRes.account;
+    setIsAuthenticated(true);
+    setAuthMethod('browser-wallet');
+    setCustomEoaAddress(addr);
+    setWalletExecutionMode('external-eoa');
+    setAuthIdentifier(`MetaMask (${addr.slice(0, 6)}...${addr.slice(-4)})`);
+
+    // Register & fund the connected MetaMask account on-chain automatically
+    try {
+      await fetch('/api/faucet', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          recipientAddress: addr,
+          ethAmount: '10',
+          usdcAmount: '250000',
+        }),
+      });
+      await refreshProtocolState();
+    } catch {
+      // Non-fatal in test environments
+    }
+
+    return addr;
+  }, [refreshProtocolState]);
 
   const authenticateWithMethod = useCallback(
     async (params: {
@@ -441,17 +577,8 @@ function DynamicOnchainIdentityBridge({
         return;
       }
 
-      if (params.method === 'browser-wallet' && params.identifier) {
-        const addr = params.identifier as Address;
-        setCustomEoaAddress(addr);
-        setWalletExecutionMode('external-eoa');
-        setAuthIdentifier(`Browser EOA (${addr.slice(0, 6)}...${addr.slice(-4)})`);
-        await executeOnchainAction('REGISTER_IDENTITY', {
-          walletAddress: addr,
-          vlei: `549300${addr.slice(2, 16).toUpperCase()}`,
-          legalName: `External Institutional Wallet (${addr.slice(0, 6)}...${addr.slice(-4)})`,
-          jurisdiction: 'Base L2 / Browser Web3 Signer',
-        });
+      if (params.method === 'browser-wallet') {
+        await connectMetaMaskWallet();
         return;
       }
 
@@ -469,13 +596,19 @@ function DynamicOnchainIdentityBridge({
         jurisdiction: 'Base L2 / ERC-4337 Account Abstraction',
       });
     },
-    [executeOnchainAction]
+    [connectMetaMaskWallet, executeOnchainAction]
   );
 
   const login = useCallback(() => {
     setIsAuthenticated(true);
-    setIsAuthModalOpen(true);
-  }, []);
+    if (getInjectedEthereum()) {
+      connectMetaMaskWallet().catch(() => {
+        setIsAuthModalOpen(true);
+      });
+    } else {
+      setIsAuthModalOpen(true);
+    }
+  }, [connectMetaMaskWallet]);
 
   const logout = useCallback(async () => {
     setIsAuthenticated(false);
@@ -487,11 +620,19 @@ function DynamicOnchainIdentityBridge({
         to,
         data,
         value,
+        triggerBrowserPopup,
       }: {
         to: Address;
         data?: `0x${string}`;
         value?: bigint;
+        triggerBrowserPopup?: boolean;
       }): Promise<Hash> => {
+        if (triggerBrowserPopup && getInjectedEthereum()) {
+          await triggerMetaMaskPopupAndSign(
+            `Sign Contract Call: ${txParams.functionName} on ${to}`
+          );
+        }
+
         if (typeof window !== 'undefined' && typeof fetch !== 'undefined') {
           try {
             const response = await fetch('/api/protocol-state', {
@@ -530,7 +671,21 @@ function DynamicOnchainIdentityBridge({
               account: {
                 address: smartAccountAddress ?? ENV_SUPPLIER_WALLET,
               },
-              sendTransaction: sendViaOnchainApi,
+              sendTransaction: ({
+                to,
+                data,
+                value,
+              }: {
+                to: Address;
+                data?: `0x${string}`;
+                value?: bigint;
+              }) =>
+                sendViaOnchainApi({
+                  to,
+                  data,
+                  value,
+                  triggerBrowserPopup: authMethod === 'browser-wallet',
+                }),
             }
           : null;
 
@@ -552,7 +707,12 @@ function DynamicOnchainIdentityBridge({
           functionName,
           args: args ? [...args] : [],
         });
-        return sendViaOnchainApi({ to: address, data: encoded, value });
+        return sendViaOnchainApi({
+          to: address,
+          data: encoded,
+          value,
+          triggerBrowserPopup: true,
+        });
       };
 
       const result = await executeTxWithSmartWalletOrWagmi({
@@ -572,6 +732,7 @@ function DynamicOnchainIdentityBridge({
       activeEnvKeyId,
       activeAddress,
       smartAccountAddress,
+      authMethod,
       setProtocolState,
     ]
   );
@@ -603,6 +764,7 @@ function DynamicOnchainIdentityBridge({
       executeOnchainAction,
       requestFaucetFunds,
       authenticateWithMethod,
+      connectMetaMaskWallet,
       isAuthModalOpen,
       setIsAuthModalOpen,
       isFaucetModalOpen,
@@ -632,6 +794,7 @@ function DynamicOnchainIdentityBridge({
       executeOnchainAction,
       requestFaucetFunds,
       authenticateWithMethod,
+      connectMetaMaskWallet,
       isAuthModalOpen,
       isFaucetModalOpen,
       login,
@@ -655,12 +818,6 @@ export interface DiptosWeb3ProviderProps {
   privyAppIdOverride?: string;
 }
 
-/**
- * DiptosWeb3Provider (Layer 2 — Base Protocol Layer)
- * Configures @privy-io/react-auth, @privy-io/react-auth/smart-wallets, and @privy-io/wagmi
- * on Base (8453) and Base Sepolia (84532) with light theme (#0A2540 institutional navy accent),
- * email, sms, passkey, external wallet, and .env Base/ETH wallet login.
- */
 export function DiptosWeb3Provider({
   children,
   initialRole = 'supplier',

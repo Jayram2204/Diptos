@@ -35,25 +35,25 @@ export function SupplierWorkspaceView({
     isAuthenticated,
     login,
     protocolState,
+    activeAddress,
+    vleiProfile,
   } = useDiptosIdentity();
 
-  const [selectedInvoiceId, setSelectedInvoiceId] = useState<string>(
-    invoices[0]?.id ?? 'RWA-3643-01'
-  );
+  const [selectedInvoiceId, setSelectedInvoiceId] = useState<string>('');
   const [settlementRail, setSettlementRail] = useState<SettlementRail>('BASE_USDC_ERC4337');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showOriginateForm, setShowOriginateForm] = useState(false);
+  const [showOriginateForm, setShowOriginateForm] = useState(invoices.length === 0);
 
-  // Dynamic E-Invoice Origination Form State
-  const [newInvNumber, setNewInvNumber] = useState(`INV-2026-BASE-${Math.floor(100 + Math.random() * 899)}`);
-  const [newCorridor, setNewCorridor] = useState('Singapore → EU (Peppol BIS 3.0)');
+  // Completely empty dynamic state — user inputs everything dynamically
+  const [newInvNumber, setNewInvNumber] = useState('');
+  const [newCorridor, setNewCorridor] = useState('');
   const [newStandard, setNewStandard] = useState<EInvoiceStandard>('PEPPOL_BIS_3_0');
-  const [newBuyerName, setNewBuyerName] = useState('Siemens Energy Global GmbH');
-  const [newBuyerLei, setNewBuyerLei] = useState('529900T8BM49AURSDO55');
-  const [newFaceValueUsd, setNewFaceValueUsd] = useState('320000');
-  const [newAprBps, setNewAprBps] = useState('910');
-  const [newTenorDays, setNewTenorDays] = useState('60');
-  const [newCbamKg, setNewCbamKg] = useState('720');
+  const [newBuyerName, setNewBuyerName] = useState('');
+  const [newBuyerLei, setNewBuyerLei] = useState('');
+  const [newFaceValueUsd, setNewFaceValueUsd] = useState('');
+  const [newAprBps, setNewAprBps] = useState('');
+  const [newTenorDays, setNewTenorDays] = useState('');
+  const [newCbamKg, setNewCbamKg] = useState('');
 
   const [txBanner, setTxBanner] = useState<{
     invoiceNumber: string;
@@ -79,33 +79,36 @@ export function SupplierWorkspaceView({
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      const faceUsd = Math.max(1000, Number(newFaceValueUsd) || 250000);
-      const faceMinor = BigInt(Math.round(faceUsd * 100)).toString();
+      const faceUsd = Math.max(1, Number(newFaceValueUsd));
+      const faceMinorBigInt = BigInt(Math.round(faceUsd * 100));
       const issueDate = new Date().toISOString().slice(0, 10);
-      const tenor = Number(newTenorDays) || 60;
+      const tenor = Math.max(1, Number(newTenorDays));
       const dueUnix = Math.floor(Date.now() / 1000) + tenor * 86400;
       const dueDate = new Date(dueUnix * 1000).toISOString().slice(0, 10);
-      const sellerLei = protocolState?.envWallets?.[0]?.vlei || '33580048329184928172';
+      const sellerLei =
+        vleiProfile?.lei ||
+        protocolState?.envWallets?.[0]?.vlei ||
+        `549300${(activeAddress || '0x0').slice(2, 16).toUpperCase()}`;
       const sellerName =
-        protocolState?.envWallets?.[0]?.legalName || 'Apex Global Industrial Exporters Ltd.';
+        vleiProfile?.legalName ||
+        protocolState?.envWallets?.[0]?.legalName ||
+        `Supplier (${activeAddress?.slice(0, 6)})`;
 
-      const canonicalResult = computeCanonicalInvoiceHash({
-        sellerId: sellerLei,
-        buyerId: newBuyerLei.trim(),
-        invoiceNumber: newInvNumber.trim(),
-        currency: 'USD',
-        faceValueMinorUnits: faceMinor,
-        issueDate,
+      const canonicalHash = computeCanonicalInvoiceHash({
+        sellerTaxIdOrLei: sellerLei,
+        buyerTaxIdOrLei: newBuyerLei.trim(),
+        officialInvoiceNumber: newInvNumber.trim(),
+        currencyCode: 'USD',
+        faceValueMinorUnits: faceMinorBigInt,
+        issueDateYYYYMMDD: issueDate,
       });
 
-      const easOrigUid = keccak256(toHex(`eas:orig:${canonicalResult.canonicalHash}:${Date.now()}`));
-      const easAcceptUid = keccak256(
-        toHex(`eas:accept:${canonicalResult.canonicalHash}:${Date.now()}`)
-      );
-      const zkProof = keccak256(toHex(`zk:groth16:${canonicalResult.canonicalHash}:${newCbamKg}`));
+      const easOrigUid = keccak256(toHex(`eas:orig:${canonicalHash}:${Date.now()}`));
+      const easAcceptUid = keccak256(toHex(`eas:accept:${canonicalHash}:${Date.now()}`));
+      const zkProof = keccak256(toHex(`zk:groth16:${canonicalHash}:${newCbamKg}`));
 
       const res = await executeOnchainAction('REGISTER_INVOICE', {
-        canonicalHash: canonicalResult.canonicalHash,
+        canonicalHash,
         invoiceNumber: newInvNumber.trim(),
         corridor: newCorridor.trim(),
         eInvoiceStandard: newStandard,
@@ -114,10 +117,10 @@ export function SupplierWorkspaceView({
         sellerLei,
         buyerName: newBuyerName.trim(),
         buyerLei: newBuyerLei.trim(),
-        buyerRating: 'AAA / Tier-1 Anchor Obligor',
+        buyerRating: 'Verified Corporate Obligor',
         currency: 'USD',
-        faceValueMinorUnits: faceMinor,
-        discountRateAprBps: Number(newAprBps) || 910,
+        faceValueMinorUnits: faceMinorBigInt.toString(),
+        discountRateAprBps: Number(newAprBps),
         tenorDays: tenor,
         issueDate,
         dueDate,
@@ -125,9 +128,9 @@ export function SupplierWorkspaceView({
         easOriginationUid: easOrigUid,
         easAcceptanceUid: easAcceptUid,
         zkProofHash: zkProof,
-        cbamEmissionsKgCo2e: Number(newCbamKg) || 720,
-        cbamStandard: 'EU CBAM Definitive • ISO-14064-1 Verified',
-        virtualIbanAccount: 'DE89 3704 0044 0532 0130 00 (FBO Escrow)',
+        cbamEmissionsKgCo2e: Number(newCbamKg),
+        cbamStandard: 'EU CBAM • ISO-14064-1',
+        virtualIbanAccount: `vIBAN-${canonicalHash.slice(2, 12).toUpperCase()}`,
       });
 
       setShowOriginateForm(false);
@@ -135,9 +138,16 @@ export function SupplierWorkspaceView({
         invoiceNumber: newInvNumber.trim(),
         hash: res.hash,
         executionMode: res.executionMode,
-        netCashUsd: Math.round(faceUsd * 0.985),
+        netCashUsd: Math.round(faceUsd * (1 - (Number(newAprBps) / 10000) * (tenor / 365))),
       });
-      setNewInvNumber(`INV-2026-BASE-${Math.floor(100 + Math.random() * 899)}`);
+      setNewInvNumber('');
+      setNewCorridor('');
+      setNewBuyerName('');
+      setNewBuyerLei('');
+      setNewFaceValueUsd('');
+      setNewAprBps('');
+      setNewTenorDays('');
+      setNewCbamKg('');
     } finally {
       setIsSubmitting(false);
     }
@@ -184,7 +194,6 @@ export function SupplierWorkspaceView({
 
   return (
     <div className="space-y-6">
-      {/* Execution Receipt Banner */}
       {txBanner && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#A7F3D0] bg-[#ECFDF5] px-5 py-3.5">
           <div>
@@ -192,7 +201,7 @@ export function SupplierWorkspaceView({
               <SemanticPill variant="emerald">
                 {txBanner.executionMode === 'erc4337-sponsored'
                   ? 'ERC-4337 PAYMASTER SPONSORED TX CONFIRMED ✓'
-                  : 'WAGMI EXTERNAL WALLET TX CONFIRMED ✓'}
+                  : 'METAMASK / EOA WALLET TX CONFIRMED ✓'}
               </SemanticPill>
               <span className="text-[13px] font-semibold text-[#0F172A]">
                 {txBanner.invoiceNumber} Minted &amp; Accelerated (${txBanner.netCashUsd.toLocaleString()} Net Disbursed)
@@ -212,7 +221,7 @@ export function SupplierWorkspaceView({
         </div>
       )}
 
-      {/* Dynamic On-Chain E-Invoice Origination Drawer */}
+      {/* Dynamic On-Chain E-Invoice Origination Form */}
       {showOriginateForm && (
         <form
           onSubmit={handleOriginateNewInvoiceOnChain}
@@ -233,7 +242,7 @@ export function SupplierWorkspaceView({
               onClick={() => setShowOriginateForm(false)}
               className="rounded border border-[#CBD5E1] px-2.5 py-1 text-xs font-semibold text-[#475569]"
             >
-              Cancel
+              Close
             </button>
           </div>
 
@@ -246,6 +255,7 @@ export function SupplierWorkspaceView({
                 type="text"
                 value={newInvNumber}
                 onChange={(e) => setNewInvNumber(e.target.value)}
+                placeholder="e.g. INV-2026-001"
                 required
                 className="w-full rounded-lg border border-[#CBD5E1] px-3 py-2 font-mono text-xs text-[#0F172A]"
               />
@@ -258,6 +268,7 @@ export function SupplierWorkspaceView({
                 type="text"
                 value={newCorridor}
                 onChange={(e) => setNewCorridor(e.target.value)}
+                placeholder="e.g. SG -> EU"
                 required
                 className="w-full rounded-lg border border-[#CBD5E1] px-3 py-2 text-xs text-[#0F172A]"
               />
@@ -274,7 +285,7 @@ export function SupplierWorkspaceView({
                 <option value="PEPPOL_BIS_3_0">Peppol BIS Billing 3.0 (EU / SG)</option>
                 <option value="INDIA_GSTN_IRN">India GSTN e-Invoice IRN</option>
                 <option value="MEXICO_SAT_CFDI">Mexico SAT CFDI 4.0</option>
-                <option value="UAE_FTA_PINT">UAE FTA PINT-AE</option>
+                <option value="US_ERP_3WAY_MATCH">US ERP 3-Way Match + eBL</option>
               </select>
             </div>
             <div>
@@ -285,6 +296,7 @@ export function SupplierWorkspaceView({
                 type="text"
                 value={newBuyerName}
                 onChange={(e) => setNewBuyerName(e.target.value)}
+                placeholder="Enter buyer corporate name"
                 required
                 className="w-full rounded-lg border border-[#CBD5E1] px-3 py-2 text-xs text-[#0F172A]"
               />
@@ -297,6 +309,7 @@ export function SupplierWorkspaceView({
                 type="text"
                 value={newBuyerLei}
                 onChange={(e) => setNewBuyerLei(e.target.value)}
+                placeholder="20-char alphanumeric LEI"
                 required
                 className="w-full rounded-lg border border-[#CBD5E1] px-3 py-2 font-mono text-xs text-[#0F172A]"
               />
@@ -309,18 +322,20 @@ export function SupplierWorkspaceView({
                 type="number"
                 value={newFaceValueUsd}
                 onChange={(e) => setNewFaceValueUsd(e.target.value)}
+                placeholder="e.g. 250000"
                 required
                 className="w-full rounded-lg border border-[#CBD5E1] px-3 py-2 font-mono text-xs text-[#0F172A]"
               />
             </div>
             <div>
               <label className="block text-xs font-semibold text-[#475569] mb-1">
-                Discount Rate (bps, e.g. 910 = 9.10%)
+                Discount Rate (bps, e.g. 900 = 9.00%)
               </label>
               <input
                 type="number"
                 value={newAprBps}
                 onChange={(e) => setNewAprBps(e.target.value)}
+                placeholder="e.g. 900"
                 required
                 className="w-full rounded-lg border border-[#CBD5E1] px-3 py-2 font-mono text-xs text-[#0F172A]"
               />
@@ -333,6 +348,7 @@ export function SupplierWorkspaceView({
                 type="number"
                 value={newTenorDays}
                 onChange={(e) => setNewTenorDays(e.target.value)}
+                placeholder="e.g. 60"
                 required
                 className="w-full rounded-lg border border-[#CBD5E1] px-3 py-2 font-mono text-xs text-[#0F172A]"
               />
@@ -345,6 +361,7 @@ export function SupplierWorkspaceView({
                 type="number"
                 value={newCbamKg}
                 onChange={(e) => setNewCbamKg(e.target.value)}
+                placeholder="e.g. 650"
                 required
                 className="w-full rounded-lg border border-[#CBD5E1] px-3 py-2 font-mono text-xs text-[#0F172A]"
               />
@@ -365,20 +382,18 @@ export function SupplierWorkspaceView({
         </form>
       )}
 
-      {/* 12-Column Responsive Split: 8-Col Approved Payables Table + 4-Col Sticky Instant Payout Checkout */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-        {/* Left 8 Columns: SAP Taulia-Inspired Early Payment Acceleration Table */}
         <div className="rounded-xl border border-[#E2E8F0] bg-[#FFFFFF] shadow-[0_1px_2px_rgba(15,23,42,0.03)] lg:col-span-8 overflow-hidden">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#E2E8F0] px-6 py-4">
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-[16px] font-bold tracking-[-0.02em] text-[#0F172A]">
-                  Supplier Portal — Buyer-Approved Receivables (Early Pay)
+                  Supplier Portal — On-Chain Receivables ({invoices.length})
                 </h2>
-                <SemanticPill variant="emerald">LIVE ON-CHAIN STATE</SemanticPill>
+                <SemanticPill variant="emerald">100% DYNAMIC ON-CHAIN</SemanticPill>
               </div>
               <p className="mt-0.5 text-[13px] text-[#64748B]">
-                Select any buyer-confirmed e-invoice below or originate a new e-invoice on Base L2.
+                All records below are fetched live from InvoiceRegistry.sol on Base L2.
               </p>
             </div>
             <button
@@ -390,118 +405,123 @@ export function SupplierWorkspaceView({
             </button>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-left">
-              <thead>
-                <tr className="border-b border-[#E2E8F0] bg-[#F8FAFC] text-[11px] font-semibold uppercase tracking-[0.05em] text-[#475569]">
-                  <th className="py-3 pl-6 pr-3">Select / Invoice</th>
-                  <th className="px-3 py-3">Anchor Buyer &amp; Rating</th>
-                  <th className="px-3 py-3">E-Invoice &amp; EAS Status</th>
-                  <th className="px-3 py-3 text-right">Tenor / APR</th>
-                  <th className="px-3 py-3 text-right">Face Value</th>
-                  <th className="py-3 pl-3 pr-6 text-right">Audit</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#E2E8F0] text-[13px]">
-                {invoices.map((invoice) => {
-                  const isSelected = invoice.id === selectedInvoice?.id;
-                  const adapterInfo =
-                    EINVOICE_ADAPTER_SPECIFICATIONS[invoice.eInvoiceStandard] ??
-                    EINVOICE_ADAPTER_SPECIFICATIONS.PEPPOL_BIS_3_0;
-                  return (
-                    <tr
-                      key={invoice.id}
-                      onClick={() => setSelectedInvoiceId(invoice.id)}
-                      className={`transition cursor-pointer ${
-                        isSelected ? 'bg-[#EFF6FF]/60' : 'hover:bg-[#F8FAFC]'
-                      }`}
-                    >
-                      <td className="py-4 pl-6 pr-3 align-top">
-                        <div className="flex items-start gap-2.5">
-                          <input
-                            type="radio"
-                            name="selectedInvoice"
-                            checked={isSelected}
-                            onChange={() => setSelectedInvoiceId(invoice.id)}
-                            aria-label={`Select invoice ${invoice.invoiceNumber}`}
-                            className="mt-1 h-4 w-4 accent-[#0A2540]"
-                          />
-                          <div>
-                            <div className="font-mono text-[13px] font-bold text-[#0F172A] tabular-nums">
-                              {invoice.invoiceNumber}
-                            </div>
-                            <div className="text-[11px] text-[#64748B]">
-                              {invoice.corridor}
-                            </div>
-                            <div className="mt-1 font-mono text-[10px] text-[#475569]">
-                              Hash: {invoice.canonicalHash.slice(0, 10)}...
-                              {invoice.canonicalHash.slice(-6)}
+          {invoices.length === 0 ? (
+            <div className="p-8 text-center text-xs text-[#475569]">
+              No invoices registered on-chain yet. Use the <strong>Originate E-Invoice On-Chain</strong> form above to create your first receivable on Base L2.
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse text-left">
+                <thead>
+                  <tr className="border-b border-[#E2E8F0] bg-[#F8FAFC] text-[11px] font-semibold uppercase tracking-[0.05em] text-[#475569]">
+                    <th className="py-3 pl-6 pr-3">Select / Invoice</th>
+                    <th className="px-3 py-3">Anchor Buyer &amp; Rating</th>
+                    <th className="px-3 py-3">E-Invoice &amp; EAS Status</th>
+                    <th className="px-3 py-3 text-right">Tenor / APR</th>
+                    <th className="px-3 py-3 text-right">Face Value</th>
+                    <th className="py-3 pl-3 pr-6 text-right">Audit</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#E2E8F0] text-[13px]">
+                  {invoices.map((invoice) => {
+                    const isSelected = invoice.id === selectedInvoice?.id;
+                    const adapterInfo =
+                      EINVOICE_ADAPTER_SPECIFICATIONS[invoice.eInvoiceStandard] ??
+                      EINVOICE_ADAPTER_SPECIFICATIONS.PEPPOL_BIS_3_0;
+                    return (
+                      <tr
+                        key={invoice.id}
+                        onClick={() => setSelectedInvoiceId(invoice.id)}
+                        className={`transition cursor-pointer ${
+                          isSelected ? 'bg-[#EFF6FF]/60' : 'hover:bg-[#F8FAFC]'
+                        }`}
+                      >
+                        <td className="py-4 pl-6 pr-3 align-top">
+                          <div className="flex items-start gap-2.5">
+                            <input
+                              type="radio"
+                              name="selectedInvoice"
+                              checked={isSelected}
+                              onChange={() => setSelectedInvoiceId(invoice.id)}
+                              aria-label={`Select invoice ${invoice.invoiceNumber}`}
+                              className="mt-1 h-4 w-4 accent-[#0A2540]"
+                            />
+                            <div>
+                              <div className="font-mono text-[13px] font-bold text-[#0F172A] tabular-nums">
+                                {invoice.invoiceNumber}
+                              </div>
+                              <div className="text-[11px] text-[#64748B]">
+                                {invoice.corridor}
+                              </div>
+                              <div className="mt-1 font-mono text-[10px] text-[#475569]">
+                                Hash: {invoice.canonicalHash.slice(0, 10)}...
+                                {invoice.canonicalHash.slice(-6)}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </td>
+                        </td>
 
-                      <td className="px-3 py-4 align-top">
-                        <div className="font-medium text-[#0F172A]">{invoice.buyerName}</div>
-                        <div className="mt-0.5 font-mono text-[11px] text-[#64748B]">
-                          vLEI: {invoice.buyerLei}
-                        </div>
-                        <div className="mt-1">
-                          <SemanticPill variant="blue">{invoice.buyerRating}</SemanticPill>
-                        </div>
-                      </td>
+                        <td className="px-3 py-4 align-top">
+                          <div className="font-medium text-[#0F172A]">{invoice.buyerName}</div>
+                          <div className="mt-0.5 font-mono text-[11px] text-[#64748B]">
+                            vLEI: {invoice.buyerLei}
+                          </div>
+                          <div className="mt-1">
+                            <SemanticPill variant="blue">{invoice.buyerRating}</SemanticPill>
+                          </div>
+                        </td>
 
-                      <td className="px-3 py-4 align-top">
-                        <div className="flex flex-col items-start gap-1">
-                          <SemanticPill variant="slate">{adapterInfo.label}</SemanticPill>
-                          <SemanticPill variant="emerald">
-                            Buyer Co-Signed via EAS ✓
-                          </SemanticPill>
-                          <SemanticPill
-                            variant={invoice.status === 'FACTORED' ? 'blue' : 'emerald'}
+                        <td className="px-3 py-4 align-top">
+                          <div className="flex flex-col items-start gap-1">
+                            <SemanticPill variant="slate">{adapterInfo.label}</SemanticPill>
+                            <SemanticPill variant="emerald">
+                              Buyer Co-Signed via EAS ✓
+                            </SemanticPill>
+                            <SemanticPill
+                              variant={invoice.status === 'FACTORED' ? 'blue' : 'emerald'}
+                            >
+                              State: {invoice.status}
+                            </SemanticPill>
+                          </div>
+                        </td>
+
+                        <td className="px-3 py-4 text-right align-top font-mono tabular-nums">
+                          <div className="font-semibold text-[#0F172A]">
+                            {invoice.tenorDays} Days
+                          </div>
+                          <div className="text-[12px] text-[#047857]">
+                            {(invoice.discountRateAprBps / 100).toFixed(2)}% APR
+                          </div>
+                        </td>
+
+                        <td className="px-3 py-4 text-right align-top font-mono tabular-nums">
+                          <div className="text-[14px] font-bold text-[#0F172A]">
+                            ${invoice.faceValueUsd.toLocaleString()}
+                          </div>
+                          <div className="text-[11px] text-[#64748B]">Due {invoice.dueDate}</div>
+                        </td>
+
+                        <td className="py-4 pl-3 pr-6 text-right align-top">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onInspectAudit(invoice);
+                            }}
+                            className="rounded-md border border-[#CBD5E1] bg-[#FFFFFF] px-2.5 py-1.5 font-mono text-[11px] font-semibold text-[#0F172A] hover:border-[#0A2540] cursor-pointer"
                           >
-                            State: {invoice.status}
-                          </SemanticPill>
-                        </div>
-                      </td>
-
-                      <td className="px-3 py-4 text-right align-top font-mono tabular-nums">
-                        <div className="font-semibold text-[#0F172A]">
-                          {invoice.tenorDays} Days
-                        </div>
-                        <div className="text-[12px] text-[#047857]">
-                          {(invoice.discountRateAprBps / 100).toFixed(2)}% APR
-                        </div>
-                      </td>
-
-                      <td className="px-3 py-4 text-right align-top font-mono tabular-nums">
-                        <div className="text-[14px] font-bold text-[#0F172A]">
-                          ${invoice.faceValueUsd.toLocaleString()}
-                        </div>
-                        <div className="text-[11px] text-[#64748B]">Due {invoice.dueDate}</div>
-                      </td>
-
-                      <td className="py-4 pl-3 pr-6 text-right align-top">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onInspectAudit(invoice);
-                          }}
-                          className="rounded-md border border-[#CBD5E1] bg-[#FFFFFF] px-2.5 py-1.5 font-mono text-[11px] font-semibold text-[#0F172A] hover:border-[#0A2540] cursor-pointer"
-                        >
-                          ZK / EAS Proof
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                            ZK / EAS Proof
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
 
-        {/* Right 4 Columns: Sticky Instant Payout Summary & 1-Click ERC-3643 Execution Card */}
         <div className="lg:col-span-4">
           {selectedInvoice ? (
             <div className="sticky top-20 rounded-xl border border-[#CBD5E1] bg-[#FFFFFF] p-6 shadow-xs">
@@ -581,7 +601,7 @@ export function SupplierWorkspaceView({
                   <span className="font-semibold text-[#047857]">
                     {walletExecutionMode === 'smart-wallet'
                       ? '$0.00 (Sponsored ERC-4337)'
-                      : '~$0.01 (External EOA)'}
+                      : 'MetaMask EOA Signer'}
                   </span>
                 </div>
 
@@ -595,21 +615,6 @@ export function SupplierWorkspaceView({
                 </div>
               </div>
 
-              <div className="mt-4 space-y-1.5 text-[11px] text-[#334155]">
-                <div className="flex items-center justify-between">
-                  <span>1. Canonical Hash (InvoiceRegistry.sol):</span>
-                  <span className="font-mono font-semibold text-[#047857]">UNIQUE ✓</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span>2. Buyer Acceptance EAS Schema #2:</span>
-                  <span className="font-mono font-semibold text-[#047857]">CO-SIGNED ✓</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span>3. Privado ID ZK Selective Disclosure:</span>
-                  <span className="font-mono font-semibold text-[#047857]">PRICES MASKED ✓</span>
-                </div>
-              </div>
-
               <button
                 type="button"
                 disabled={isSubmitting || selectedInvoice.status === 'FACTORED'}
@@ -619,13 +624,13 @@ export function SupplierWorkspaceView({
                 {selectedInvoice.status === 'FACTORED'
                   ? 'Already Factored & Funded on Base'
                   : isSubmitting
-                  ? 'Executing Sponsored ERC-3643 Mint...'
+                  ? 'Signing & Minting ERC-3643...'
                   : 'Get Cash in 24h (Mint & Fund ERC-3643)'}
               </button>
             </div>
           ) : (
             <div className="rounded-xl border border-[#CBD5E1] bg-white p-6 text-xs text-[#475569]">
-              Loading live on-chain receivables from Base L2...
+              Originate an e-invoice on-chain to calculate discount math and mint an ERC-3643 token.
             </div>
           )}
         </div>

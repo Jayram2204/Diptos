@@ -14,14 +14,14 @@ export interface RegistryWorkspaceViewProps {
 }
 
 export function RegistryWorkspaceView({ invoices }: RegistryWorkspaceViewProps) {
-  const { executeOnchainAction, protocolState } = useDiptosIdentity();
+  const { executeOnchainAction, protocolState, vleiProfile, activeAddress } = useDiptosIdentity();
 
-  const [sellerId, setSellerId] = useState('3358-0048-3291-8492-8172');
-  const [buyerId, setBuyerId] = useState('529900T8BM49AURSDO55');
-  const [invoiceNumber, setInvoiceNumber] = useState(' inv - 2026 / 8841 ');
+  const [sellerId, setSellerId] = useState('');
+  const [buyerId, setBuyerId] = useState('');
+  const [invoiceNumber, setInvoiceNumber] = useState('');
   const [currencyCode, setCurrencyCode] = useState('USD');
-  const [issueDate, setIssueDate] = useState('2026-10-15');
-  const [faceValueUsd, setFaceValueUsd] = useState('185000');
+  const [issueDate, setIssueDate] = useState('');
+  const [faceValueUsd, setFaceValueUsd] = useState('');
   const [isRegistering, setIsRegistering] = useState(false);
   const [lastTxHash, setLastTxHash] = useState<string | null>(null);
 
@@ -31,16 +31,19 @@ export function RegistryWorkspaceView({ invoices }: RegistryWorkspaceViewProps) 
   );
 
   const simulationResult = useMemo(() => {
+    if (!sellerId.trim() || !buyerId.trim() || !invoiceNumber.trim() || !issueDate.trim() || !faceValueUsd.trim()) {
+      return null;
+    }
     try {
       const numericUsd = Number(faceValueUsd.replace(/[^0-9.]/g, '')) || 0;
-      const minorUnits = BigInt(Math.round(numericUsd * 100)).toString();
+      const minorUnits = BigInt(Math.round(numericUsd * 100));
       return checkInvoiceDeduplication(
         {
-          sellerId,
-          buyerId,
-          invoiceNumber,
-          currency: currencyCode,
-          issueDate,
+          sellerTaxIdOrLei: sellerId,
+          buyerTaxIdOrLei: buyerId,
+          officialInvoiceNumber: invoiceNumber,
+          currencyCode,
+          issueDateYYYYMMDD: issueDate,
           faceValueMinorUnits: minorUnits,
         },
         existingHashes
@@ -54,7 +57,7 @@ export function RegistryWorkspaceView({ invoices }: RegistryWorkspaceViewProps) 
     if (!simulationResult || simulationResult.isDuplicate) return;
     setIsRegistering(true);
     try {
-      const numericUsd = Number(faceValueUsd.replace(/[^0-9.]/g, '')) || 185000;
+      const numericUsd = Number(faceValueUsd.replace(/[^0-9.]/g, '')) || 0;
       const minorUnits = BigInt(Math.round(numericUsd * 100)).toString();
       const dueUnix = Math.floor(Date.now() / 1000) + 60 * 86400;
       const dueDate = new Date(dueUnix * 1000).toISOString().slice(0, 10);
@@ -62,21 +65,19 @@ export function RegistryWorkspaceView({ invoices }: RegistryWorkspaceViewProps) 
       const res = await executeOnchainAction('REGISTER_INVOICE', {
         canonicalHash: simulationResult.canonicalHash,
         invoiceNumber: simulationResult.normalizedPayload.invoiceNumber,
-        corridor: 'Global Registry Bridge (Base L2 + MonetaGo)',
+        corridor: 'Base L2 Registry',
         eInvoiceStandard: 'PEPPOL_BIS_3_0',
         governmentClearanceRef: `REG-${Date.now().toString().slice(-6)}`,
-        sellerName:
-          protocolState?.envWallets?.[0]?.legalName || 'Apex Global Industrial Exporters Ltd.',
+        sellerName: vleiProfile?.legalName || `Seller (${activeAddress?.slice(0, 6)})`,
         sellerLei: simulationResult.normalizedPayload.sellerId,
-        buyerName:
-          protocolState?.envWallets?.[1]?.legalName || 'Continental Drivetrain & Mobility AG',
+        buyerName: `Buyer (${simulationResult.normalizedPayload.buyerId.slice(0, 8)})`,
         buyerLei: simulationResult.normalizedPayload.buyerId,
-        buyerRating: 'AA+ / Verified Obligor',
+        buyerRating: 'Verified Obligor',
         currency: simulationResult.normalizedPayload.currency,
         faceValueMinorUnits: minorUnits,
-        discountRateAprBps: 920,
+        discountRateAprBps: 900,
         tenorDays: 60,
-        issueDate: simulationResult.normalizedPayload.issueDate,
+        issueDate: issueDate.trim(),
         dueDate,
         dueDateUnix: dueUnix,
         easOriginationUid: keccak256(
@@ -86,9 +87,9 @@ export function RegistryWorkspaceView({ invoices }: RegistryWorkspaceViewProps) 
           toHex(`eas:accept:${simulationResult.canonicalHash}:${Date.now()}`)
         ),
         zkProofHash: keccak256(toHex(`zk:proof:${simulationResult.canonicalHash}`)),
-        cbamEmissionsKgCo2e: 680,
-        cbamStandard: 'EU CBAM Definitive • ISO-14064-1 Verified',
-        virtualIbanAccount: 'DE89 3704 0044 0532 0130 00 (FBO Escrow)',
+        cbamEmissionsKgCo2e: 500,
+        cbamStandard: 'EU CBAM • ISO-14064-1',
+        virtualIbanAccount: `vIBAN-${simulationResult.canonicalHash.slice(2, 10).toUpperCase()}`,
       });
       setLastTxHash(res.hash);
     } finally {
@@ -113,10 +114,8 @@ export function RegistryWorkspaceView({ invoices }: RegistryWorkspaceViewProps) 
         </div>
 
         <p className="mt-3 text-[13px] text-[#334155]">
-          Try adding spaces, hyphens, slashes, or lowercase letters to an already-registered invoice
-          (such as <code className="font-mono font-semibold">INV-2026-8841</code>). Diptos strips
-          formatting noise before computing the canonical hash and blocks duplicate minting across
-          Base and MonetaGo. Change the invoice number to register a new unique hash on-chain.
+          Enter invoice parameters below to compute the deterministic canonical hash and check
+          against live on-chain records in <code className="font-mono">InvoiceRegistry.sol</code>.
         </p>
 
         <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 text-[12px]">
@@ -126,6 +125,7 @@ export function RegistryWorkspaceView({ invoices }: RegistryWorkspaceViewProps) 
               type="text"
               value={sellerId}
               onChange={(e) => setSellerId(e.target.value)}
+              placeholder="Enter Seller LEI / Tax ID"
               className="mt-1 w-full rounded-lg border border-[#CBD5E1] bg-[#F8FAFC] px-3 py-2 font-mono text-[12px] text-[#0F172A]"
             />
           </div>
@@ -135,17 +135,19 @@ export function RegistryWorkspaceView({ invoices }: RegistryWorkspaceViewProps) 
               type="text"
               value={buyerId}
               onChange={(e) => setBuyerId(e.target.value)}
+              placeholder="Enter Buyer LEI / Tax ID"
               className="mt-1 w-full rounded-lg border border-[#CBD5E1] bg-[#F8FAFC] px-3 py-2 font-mono text-[12px] text-[#0F172A]"
             />
           </div>
           <div>
             <label className="font-semibold text-[#475569]">
-              Official Invoice Number (Try adding spaces/hyphens)
+              Official Invoice Number
             </label>
             <input
               type="text"
               value={invoiceNumber}
               onChange={(e) => setInvoiceNumber(e.target.value)}
+              placeholder="e.g. INV-2026-001"
               className="mt-1 w-full rounded-lg border border-[#CBD5E1] bg-[#F8FAFC] px-3 py-2 font-mono text-[12px] text-[#0F172A]"
             />
           </div>
@@ -155,6 +157,7 @@ export function RegistryWorkspaceView({ invoices }: RegistryWorkspaceViewProps) 
               type="text"
               value={issueDate}
               onChange={(e) => setIssueDate(e.target.value)}
+              placeholder="YYYY-MM-DD"
               className="mt-1 w-full rounded-lg border border-[#CBD5E1] bg-[#F8FAFC] px-3 py-2 font-mono text-[12px] text-[#0F172A]"
             />
           </div>
@@ -164,6 +167,7 @@ export function RegistryWorkspaceView({ invoices }: RegistryWorkspaceViewProps) 
               type="text"
               value={currencyCode}
               onChange={(e) => setCurrencyCode(e.target.value)}
+              placeholder="USD"
               className="mt-1 w-full rounded-lg border border-[#CBD5E1] bg-[#F8FAFC] px-3 py-2 font-mono text-[12px] text-[#0F172A]"
             />
           </div>
@@ -173,6 +177,7 @@ export function RegistryWorkspaceView({ invoices }: RegistryWorkspaceViewProps) 
               type="text"
               value={faceValueUsd}
               onChange={(e) => setFaceValueUsd(e.target.value)}
+              placeholder="e.g. 150000"
               className="mt-1 w-full rounded-lg border border-[#CBD5E1] bg-[#F8FAFC] px-3 py-2 font-mono text-[12px] text-[#0F172A]"
             />
           </div>
@@ -247,27 +252,33 @@ export function RegistryWorkspaceView({ invoices }: RegistryWorkspaceViewProps) 
         </div>
 
         <div className="mt-4 space-y-3">
-          {invoices.map((inv) => (
-            <div
-              key={inv.id}
-              className="rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] p-3.5"
-            >
-              <div className="flex items-center justify-between">
-                <span className="font-mono text-[13px] font-bold text-[#0F172A]">
-                  {inv.invoiceNumber} • ${inv.faceValueUsd.toLocaleString()}
-                </span>
-                <SemanticPill variant={inv.status === 'FACTORED' ? 'blue' : 'emerald'}>
-                  {inv.status}
-                </SemanticPill>
-              </div>
-              <div className="mt-1 text-[12px] text-[#334155]">
-                {inv.sellerName} → {inv.buyerName}
-              </div>
-              <div className="mt-1.5 font-mono text-[11px] text-[#0F172A] break-all">
-                Hash: {inv.canonicalHash}
-              </div>
+          {invoices.length === 0 ? (
+            <div className="rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] p-6 text-center text-xs text-[#64748B]">
+              No canonical hashes registered on-chain yet. Compute and commit a hash on the left.
             </div>
-          ))}
+          ) : (
+            invoices.map((inv) => (
+              <div
+                key={inv.id}
+                className="rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] p-3.5"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-[13px] font-bold text-[#0F172A]">
+                    {inv.invoiceNumber} • ${inv.faceValueUsd.toLocaleString()}
+                  </span>
+                  <SemanticPill variant={inv.status === 'FACTORED' ? 'blue' : 'emerald'}>
+                    {inv.status}
+                  </SemanticPill>
+                </div>
+                <div className="mt-1 text-[12px] text-[#334155]">
+                  {inv.sellerName} → {inv.buyerName}
+                </div>
+                <div className="mt-1.5 font-mono text-[11px] text-[#0F172A] break-all">
+                  Hash: {inv.canonicalHash}
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </div>
     </div>

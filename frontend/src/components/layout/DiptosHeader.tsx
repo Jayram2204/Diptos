@@ -58,6 +58,7 @@ export function DiptosHeader() {
     protocolState,
     setIsAuthModalOpen,
     setIsFaucetModalOpen,
+    connectMetaMaskWallet,
     login,
     logout,
   } = useDiptosIdentity();
@@ -134,7 +135,7 @@ export function DiptosHeader() {
           })}
         </nav>
 
-        {/* Right: Faucet + Multi-Auth + ERC-4337 Paymaster Badge + Verified vLEI Pill */}
+        {/* Right: Faucet + MetaMask + Multi-Auth + ERC-4337 Paymaster Badge + Verified vLEI Pill */}
         <div className="order-2 flex items-center gap-2 lg:order-3">
           {/* Live Base / ETH Faucet Button */}
           <button
@@ -152,6 +153,19 @@ export function DiptosHeader() {
             </span>
           </button>
 
+          {/* Direct MetaMask Popup Button */}
+          <button
+            type="button"
+            onClick={() => {
+              connectMetaMaskWallet().catch(() => setIsAuthModalOpen(true));
+            }}
+            title="Open MetaMask Popup (window.ethereum) to Connect & Sign"
+            className="inline-flex items-center gap-1.5 rounded-md bg-[#0A2540] px-2.5 py-1.5 text-[11px] font-semibold text-white hover:bg-[#1E293B] cursor-pointer"
+          >
+            <KeyRound className="h-3.5 w-3.5 text-[#14B8A6]" />
+            <span>Connect MetaMask</span>
+          </button>
+
           {/* Multi-Method Auth & .env Wallet Switcher */}
           <button
             type="button"
@@ -159,8 +173,7 @@ export function DiptosHeader() {
             title="Switch between .env Base/ETH Wallets, Email OTP, SMS OTP, WebAuthn Passkey, or MetaMask"
             className="hidden md:inline-flex items-center gap-1.5 rounded-md border border-[#CBD5E1] bg-white px-2.5 py-1.5 text-[11px] font-semibold text-[#0A2540] hover:bg-[#F8FAFC] cursor-pointer"
           >
-            <KeyRound className="h-3.5 w-3.5 text-[#0284C7]" />
-            <span>Auth / Wallets</span>
+            <span>All Wallets / OTP</span>
           </button>
 
           {/* Chain Selector: Base (8453) vs Base Sepolia (84532) */}
