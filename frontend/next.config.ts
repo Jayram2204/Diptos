@@ -10,6 +10,7 @@ const nextConfig: NextConfig = {
       ...config.resolve.fallback,
       '@farcaster/mini-app-solana': false,
       '@metamask/connect-evm': false,
+      '@stripe/stripe-js': false,
       accounts: false,
       'pino-pretty': false,
     };
