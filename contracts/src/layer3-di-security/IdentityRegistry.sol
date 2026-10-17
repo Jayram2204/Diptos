@@ -11,6 +11,8 @@ contract IdentityRegistry {
         string legalName;
         string jurisdiction;
         string qviIssuer;
+        string role;
+        bytes32 vleiClaimHash;
         bool verified;
         uint64 registeredAt;
     }
@@ -37,8 +39,46 @@ contract IdentityRegistry {
         string vlei,
         string legalName
     );
+    event CorporateIdentityRegistered(
+        address indexed participant,
+        string role,
+        string vlei,
+        bytes32 vleiClaimHash,
+        string legalName
+    );
     event IdentityRevoked(address indexed participant);
     event CredentialIssued(string vcId, address indexed subjectAddress, string vcType);
+
+    function _storeIdentity(
+        address _user,
+        address _onchainId,
+        string calldata _vlei,
+        string calldata _legalName,
+        string calldata _jurisdiction,
+        string calldata _qviIssuer,
+        string memory _role
+    ) internal {
+        if (identities[_user].registeredAt == 0) {
+            registeredAddresses.push(_user);
+        }
+        bytes32 claimHash = keccak256(
+            abi.encodePacked("GLEIF_VLEI_CLAIM:", _user, ":", _vlei, ":", _legalName, ":", _role)
+        );
+        identities[_user] = CorporateIdentityRecord({
+            wallet: _user,
+            onchainIdContract: _onchainId,
+            vlei: _vlei,
+            legalName: _legalName,
+            jurisdiction: _jurisdiction,
+            qviIssuer: _qviIssuer,
+            role: _role,
+            vleiClaimHash: claimHash,
+            verified: true,
+            registeredAt: uint64(block.timestamp)
+        });
+        emit IdentityRegistered(_user, _onchainId, _vlei, _legalName);
+        emit CorporateIdentityRegistered(_user, _role, _vlei, claimHash, _legalName);
+    }
 
     function registerIdentity(
         address _user,
@@ -48,20 +88,19 @@ contract IdentityRegistry {
         string calldata _jurisdiction,
         string calldata _qviIssuer
     ) external {
-        if (identities[_user].registeredAt == 0) {
-            registeredAddresses.push(_user);
-        }
-        identities[_user] = CorporateIdentityRecord({
-            wallet: _user,
-            onchainIdContract: _onchainId,
-            vlei: _vlei,
-            legalName: _legalName,
-            jurisdiction: _jurisdiction,
-            qviIssuer: _qviIssuer,
-            verified: true,
-            registeredAt: uint64(block.timestamp)
-        });
-        emit IdentityRegistered(_user, _onchainId, _vlei, _legalName);
+        _storeIdentity(_user, _onchainId, _vlei, _legalName, _jurisdiction, _qviIssuer, "SUPPLIER");
+    }
+
+    function registerCorporateIdentity(
+        address _user,
+        address _onchainId,
+        string calldata _vlei,
+        string calldata _legalName,
+        string calldata _jurisdiction,
+        string calldata _qviIssuer,
+        string calldata _role
+    ) external {
+        _storeIdentity(_user, _onchainId, _vlei, _legalName, _jurisdiction, _qviIssuer, _role);
     }
 
     function issueCredential(
