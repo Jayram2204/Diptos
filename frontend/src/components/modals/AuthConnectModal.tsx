@@ -26,6 +26,7 @@ import {
 
 export function AuthConnectModal() {
   const {
+    isAuthenticated,
     isAuthModalOpen,
     setIsAuthModalOpen,
     authMethod,
@@ -433,11 +434,17 @@ export function AuthConnectModal() {
                     type="button"
                     disabled={isBusy}
                     onClick={handleConnectOrSwitchMetaMask}
-                    className="flex items-center justify-center gap-2 rounded-lg bg-[#0A2540] px-4 py-2.5 text-xs font-semibold text-white hover:bg-[#1E293B] disabled:opacity-50 cursor-pointer"
+                    className={`flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-xs font-semibold text-white disabled:opacity-50 cursor-pointer ${
+                      isAuthenticated && activeAddress && authIdentifier?.startsWith('MetaMask (')
+                        ? 'bg-[#059669] hover:bg-[#047857]'
+                        : 'bg-[#0A2540] hover:bg-[#1E293B]'
+                    }`}
                   >
                     <Wallet className="h-4 w-4 text-[#14B8A6]" />
                     {isBusy
                       ? 'Opening MetaMask Popup...'
+                      : isAuthenticated && activeAddress && authIdentifier?.startsWith('MetaMask (')
+                      ? `Wallet Connected (${activeAddress.slice(0, 6)}...${activeAddress.slice(-4)})`
                       : 'Connect MetaMask'}
                   </button>
 

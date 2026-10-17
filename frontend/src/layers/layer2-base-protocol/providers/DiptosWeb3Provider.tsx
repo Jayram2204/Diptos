@@ -47,9 +47,23 @@ import {
 import { AuthConnectModal } from '@/components/modals/AuthConnectModal';
 import { FaucetModal } from '@/components/modals/FaucetModal';
 
+let cachedEip6963Provider: InjectedEthereumProvider | undefined;
+
 function getInjectedEthereum(): InjectedEthereumProvider | undefined {
   if (typeof window === 'undefined') return undefined;
-  return (window as unknown as { ethereum?: InjectedEthereumProvider }).ethereum;
+  if (cachedEip6963Provider) return cachedEip6963Provider;
+  const winEth = (
+    window as unknown as {
+      ethereum?: InjectedEthereumProvider & {
+        providers?: InjectedEthereumProvider[];
+      };
+    }
+  ).ethereum;
+  if (winEth?.providers && Array.isArray(winEth.providers)) {
+    const mm = winEth.providers.find((p) => p.isMetaMask);
+    if (mm) return mm;
+  }
+  return winEth;
 }
 
 function deriveDeterministicAddressFromSeed(seed: string): Address {
@@ -235,7 +249,7 @@ function DynamicOnchainIdentityBridge({
   children: React.ReactNode;
   initialRole?: DiptosWorkspaceRole;
 }) {
-  const { address: wagmiConnectedAddress } = useAccount();
+  const { address: wagmiConnectedAddress, chainId: wagmiChainId } = useAccount();
   const { writeContractAsync: wagmiHookWriteContractAsync } = useWriteContract();
 
   const defaultSessionSmartAddr = useMemo(
@@ -266,7 +280,7 @@ function DynamicOnchainIdentityBridge({
     ? customSmartAddress ?? defaultSessionSmartAddr
     : null;
   const eoaAddress = isAuthenticated
-    ? customEoaAddress ?? (wagmiConnectedAddress as Address | undefined) ?? defaultSessionSmartAddr
+    ? customEoaAddress ?? defaultSessionSmartAddr
     : null;
   const activeAddress =
     walletExecutionMode === 'external-eoa' || authMethod === 'browser-wallet'
@@ -301,12 +315,26 @@ function DynamicOnchainIdentityBridge({
     }
   }, [matchedOnChainIdentity?.wallet, matchedOnChainIdentity?.role]);
 
-  // Subscribe to window.ethereum accountsChanged and chainChanged for zero-reload live updates
+  // Sync Wagmi connected EOA address after client mount (avoids SSR hydration mismatch)
   useEffect(() => {
-    const eth = getInjectedEthereum();
-    if (!eth) return;
+    if (wagmiConnectedAddress) {
+      const addr = wagmiConnectedAddress as Address;
+      setIsAuthenticated(true);
+      setAuthMethod('browser-wallet');
+      setWalletExecutionMode('external-eoa');
+      setCustomEoaAddress(addr);
+      setAuthIdentifier(`MetaMask (${addr.slice(0, 6)}...${addr.slice(-4)})`);
+      if (wagmiChainId && wagmiChainId > 0) {
+        setChainId(wagmiChainId);
+      }
+    }
+  }, [wagmiConnectedAddress, wagmiChainId]);
 
-    const syncInitialConnectedAccount = async () => {
+  // Subscribe to window.ethereum / EIP-6963 accountsChanged and chainChanged for zero-reload live updates
+  useEffect(() => {
+    const syncFromProvider = async (provider?: InjectedEthereumProvider) => {
+      const eth = provider ?? getInjectedEthereum();
+      if (!eth) return;
       try {
         const accountsRaw = await eth.request?.({ method: 'eth_accounts' });
         const list = Array.isArray(accountsRaw) ? (accountsRaw as string[]) : [];
@@ -346,9 +374,50 @@ function DynamicOnchainIdentityBridge({
       }
     };
 
-    void syncInitialConnectedAccount();
+    void syncFromProvider();
 
-    if (!eth.on) return;
+    const handleEip6963Announce = (event: Event) => {
+      const customEv = event as CustomEvent<{
+        info?: { rdns?: string; name?: string };
+        provider?: InjectedEthereumProvider;
+      }>;
+      const announced = customEv.detail?.provider;
+      if (announced) {
+        if (
+          !cachedEip6963Provider ||
+          customEv.detail?.info?.rdns?.includes('metamask') ||
+          customEv.detail?.info?.name?.toLowerCase().includes('metamask') ||
+          announced.isMetaMask
+        ) {
+          cachedEip6963Provider = announced;
+          void syncFromProvider(announced);
+        }
+      }
+    };
+
+    const handleEthereumInitialized = () => {
+      void syncFromProvider();
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('eip6963:announceProvider', handleEip6963Announce);
+      window.addEventListener('ethereum#initialized', handleEthereumInitialized);
+      try {
+        window.dispatchEvent(new Event('eip6963:requestProvider'));
+      } catch {
+        // Ignore if dispatchEvent is restricted
+      }
+    }
+
+    const eth = getInjectedEthereum();
+    if (!eth?.on) {
+      return () => {
+        if (typeof window !== 'undefined') {
+          window.removeEventListener('eip6963:announceProvider', handleEip6963Announce);
+          window.removeEventListener('ethereum#initialized', handleEthereumInitialized);
+        }
+      };
+    }
 
     const handleAccountsChanged = async (accountsParam: unknown) => {
       const list = Array.isArray(accountsParam) ? (accountsParam as string[]) : [];
@@ -405,6 +474,10 @@ function DynamicOnchainIdentityBridge({
     return () => {
       eth.removeListener?.('accountsChanged', handleAccountsChanged);
       eth.removeListener?.('chainChanged', handleChainChanged);
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('eip6963:announceProvider', handleEip6963Announce);
+        window.removeEventListener('ethereum#initialized', handleEthereumInitialized);
+      }
     };
   }, [protocolState?.contracts.IDENTITY_REGISTRY, refreshProtocolState]);
 
@@ -469,6 +542,7 @@ function DynamicOnchainIdentityBridge({
   const connectOrSwitchMetaMask = useCallback(
     async (targetChainIdOption?: number): Promise<MetaMaskConnectResult> => {
       const result = await executeMetaMaskConnectOrSwitch({
+        ethereum: getInjectedEthereum(),
         targetChainId: targetChainIdOption,
         identityRegistryAddress: protocolState?.contracts.IDENTITY_REGISTRY,
       });

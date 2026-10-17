@@ -5,21 +5,28 @@ import { DiptosWeb3Provider } from '@/providers/DiptosWeb3Provider';
 import { DiptosHeader } from '../DiptosHeader';
 
 describe('Institutional Header & Dynamic MetaMask Auth Gateway (DiptosHeader)', () => {
-  it('displays the verified vLEI & ONCHAINID pill (did:pkh:base:0x...), switches workspaces, and opens the dynamic MetaMask Auth Modal without hardcoded .env wallets', () => {
+  it('displays the compact 56px header with Base Sepolia • Sponsored, unified vLEI button, switches workspaces, and opens the dynamic MetaMask Auth Modal', () => {
     render(
       <DiptosWeb3Provider>
         <DiptosHeader />
       </DiptosWeb3Provider>
     );
 
-    // Verified corporate identity pill should render in the header
-    expect(screen.getByText(/did:pkh:base:0x/i)).toBeInTheDocument();
-    expect(screen.getByText(/GLEIF vLEI/i)).toBeInTheDocument();
-    expect(screen.getByText(/Gas: Sponsored \(ERC-4337\)/i)).toBeInTheDocument();
+    // Compact network and gas status pill
+    expect(screen.getByText(/Base Sepolia • Sponsored/i)).toBeInTheDocument();
 
-    // Role switcher buttons
+    // Unified Wallet & vLEI button
+    const walletButton = screen.getByRole('button', { name: /vLEI ✓|Connect MetaMask/i });
+    expect(walletButton).toBeInTheDocument();
+
+    // Ghost Faucet button
+    expect(screen.getByRole('button', { name: /Faucet/i })).toBeInTheDocument();
+
+    // Workspace switcher buttons
     const supplierBtn = screen.getByRole('button', { name: /Supplier Portal/i });
-    const financierBtn = screen.getByRole('button', { name: /Financier Credit Desk/i });
+    const financierBtn = screen.getByRole('button', { name: /Financier Desk/i });
+    const registryBtn = screen.getByRole('button', { name: /Hash Registry/i });
+    const securityBtn = screen.getByRole('button', { name: /DI & Security/i });
 
     expect(supplierBtn).toHaveAttribute('aria-pressed', 'true');
     expect(financierBtn).toHaveAttribute('aria-pressed', 'false');
@@ -29,9 +36,8 @@ describe('Institutional Header & Dynamic MetaMask Auth Gateway (DiptosHeader)', 
     expect(financierBtn).toHaveAttribute('aria-pressed', 'true');
     expect(supplierBtn).toHaveAttribute('aria-pressed', 'false');
 
-    // Open Auth Modal and verify .env Wallets tab is removed and MetaMask / Injected EOA is default
-    const connectBtn = screen.getByRole('button', { name: /Connect \/ Switch MetaMask/i });
-    fireEvent.click(connectBtn);
+    // Open Auth Modal via unified wallet button and verify dynamic MetaMask connection
+    fireEvent.click(walletButton);
 
     expect(screen.queryByText(/\.env Wallets/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/Apex Global Industrial Exporters/i)).not.toBeInTheDocument();

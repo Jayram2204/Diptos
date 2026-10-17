@@ -7,6 +7,28 @@ import type { Address } from 'viem';
 
 export const dynamic = 'force-dynamic';
 
+export async function GET(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const address = searchParams.get('address') as Address | null;
+    const state = await readDynamicProtocolState(address ?? undefined);
+    return NextResponse.json({
+      ok: true,
+      faucetStatus: 'ONLINE',
+      defaultDisbursement: { ethAmount: '10', usdcAmount: '250000' },
+      state,
+    });
+  } catch (error) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: error instanceof Error ? error.message : 'Failed to read faucet status',
+      },
+      { status: 500 }
+    );
+  }
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();

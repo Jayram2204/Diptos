@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { keccak256, toHex } from 'viem';
+import { Plus, X, ArrowRight, ShieldCheck } from 'lucide-react';
 import {
   EINVOICE_ADAPTER_SPECIFICATIONS,
   computeCanonicalInvoiceHash,
@@ -15,7 +16,6 @@ import {
   calculateInvoiceDiscountMath,
 } from '@/layers/layer2-base-protocol';
 import { useDiptosIdentity } from '@/hooks/useDiptosIdentity';
-import { SemanticPill } from '@/components/ui/SemanticPill';
 
 export interface SupplierWorkspaceViewProps {
   invoices: RWAInvoiceRecord[];
@@ -42,9 +42,9 @@ export function SupplierWorkspaceView({
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string>('');
   const [settlementRail, setSettlementRail] = useState<SettlementRail>('BASE_USDC_ERC4337');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showOriginateForm, setShowOriginateForm] = useState(invoices.length === 0);
+  const [isOriginateDrawerOpen, setIsOriginateDrawerOpen] = useState(false);
 
-  // Completely empty dynamic state — user inputs everything dynamically
+  // 9 Dynamic Origination Inputs
   const [newInvNumber, setNewInvNumber] = useState('');
   const [newCorridor, setNewCorridor] = useState('');
   const [newStandard, setNewStandard] = useState<EInvoiceStandard>('PEPPOL_BIS_3_0');
@@ -118,7 +118,7 @@ export function SupplierWorkspaceView({
         buyerRating: 'Verified Corporate Obligor',
         currency: 'USD',
         faceValueMinorUnits: faceMinorBigInt.toString(),
-        discountRateAprBps: Number(newAprBps),
+        discountRateAprBps: Number(newAprBps) || 900,
         tenorDays: tenor,
         issueDate,
         dueDate,
@@ -126,12 +126,12 @@ export function SupplierWorkspaceView({
         easOriginationUid: easOrigUid,
         easAcceptanceUid: easAcceptUid,
         zkProofHash: zkProof,
-        cbamEmissionsKgCo2e: Number(newCbamKg),
+        cbamEmissionsKgCo2e: Number(newCbamKg) || 0,
         cbamStandard: 'EU CBAM • ISO-14064-1',
         virtualIbanAccount: `vIBAN-${canonicalHash.slice(2, 12).toUpperCase()}`,
       });
 
-      setShowOriginateForm(false);
+      setIsOriginateDrawerOpen(false);
       setTxBanner({
         invoiceNumber: newInvNumber.trim(),
         hash: res.hash,
@@ -191,423 +191,259 @@ export function SupplierWorkspaceView({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
+      {/* Confirmation Banner */}
       {txBanner && (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#A7F3D0] bg-[#ECFDF5] px-5 py-3.5">
-          <div>
-            <div className="flex items-center gap-2">
-              <SemanticPill variant="emerald">
-                {txBanner.executionMode === 'erc4337-sponsored'
-                  ? 'ERC-4337 PAYMASTER SPONSORED TX CONFIRMED ✓'
-                  : 'METAMASK / EOA WALLET TX CONFIRMED ✓'}
-              </SemanticPill>
-              <span className="text-[13px] font-semibold text-[#0F172A]">
-                {txBanner.invoiceNumber} Minted &amp; Accelerated (${txBanner.netCashUsd.toLocaleString()} Net Disbursed)
-              </span>
-            </div>
-            <div className="mt-1 font-mono text-[11px] text-[#047857] break-all">
-              Base L2 Tx Hash: {txBanner.hash}
-            </div>
+        <div className="flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-xs text-emerald-800">
+          <div className="flex items-center gap-2">
+            <span className="font-semibold">{txBanner.invoiceNumber}</span>
+            <span>Minted &amp; Accelerated (${txBanner.netCashUsd.toLocaleString()} Net)</span>
+            <span className="font-mono text-[11px] text-emerald-700 truncate max-w-xs">
+              Tx: {txBanner.hash}
+            </span>
           </div>
           <button
             type="button"
             onClick={() => setTxBanner(null)}
-            className="rounded border border-[#A7F3D0] bg-[#FFFFFF] px-2.5 py-1 text-[11px] font-semibold text-[#047857] cursor-pointer"
+            className="rounded px-2 py-0.5 text-xs font-medium text-emerald-700 hover:bg-emerald-100 cursor-pointer"
           >
             Dismiss
           </button>
         </div>
       )}
 
-      {/* Dynamic On-Chain E-Invoice Origination Form */}
-      {showOriginateForm && (
-        <form
-          onSubmit={handleOriginateNewInvoiceOnChain}
-          className="rounded-xl border border-[#CBD5E1] bg-white p-6 shadow-sm space-y-4"
-        >
-          <div className="flex items-center justify-between border-b border-[#E2E8F0] pb-3">
-            <div>
-              <h3 className="text-sm font-bold text-[#0F172A]">
-                Originate &amp; Register New E-Invoice On-Chain (InvoiceRegistry.sol)
-              </h3>
-              <p className="text-xs text-[#64748B]">
-                Computes canonical keccak256 hash, anchors EAS Origination &amp; Buyer Acceptance
-                UIDs, and writes directly to Base L2.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setShowOriginateForm(false)}
-              className="rounded border border-[#CBD5E1] px-2.5 py-1 text-xs font-semibold text-[#475569]"
-            >
-              Close
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <div>
-              <label className="block text-xs font-semibold text-[#475569] mb-1">
-                Invoice Number
-              </label>
-              <input
-                type="text"
-                value={newInvNumber}
-                onChange={(e) => setNewInvNumber(e.target.value)}
-                placeholder="e.g. INV-2026-001"
-                required
-                className="w-full rounded-lg border border-[#CBD5E1] px-3 py-2 font-mono text-xs text-[#0F172A]"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-[#475569] mb-1">
-                Trade Corridor
-              </label>
-              <input
-                type="text"
-                value={newCorridor}
-                onChange={(e) => setNewCorridor(e.target.value)}
-                placeholder="e.g. SG -> EU"
-                required
-                className="w-full rounded-lg border border-[#CBD5E1] px-3 py-2 text-xs text-[#0F172A]"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-[#475569] mb-1">
-                E-Invoice Standard
-              </label>
-              <select
-                value={newStandard}
-                onChange={(e) => setNewStandard(e.target.value as EInvoiceStandard)}
-                className="w-full rounded-lg border border-[#CBD5E1] bg-white px-3 py-2 text-xs text-[#0F172A]"
-              >
-                <option value="PEPPOL_BIS_3_0">Peppol BIS Billing 3.0 (EU / SG)</option>
-                <option value="INDIA_GSTN_IRN">India GSTN e-Invoice IRN</option>
-                <option value="MEXICO_SAT_CFDI">Mexico SAT CFDI 4.0</option>
-                <option value="US_ERP_3WAY_MATCH">US ERP 3-Way Match + eBL</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-[#475569] mb-1">
-                Anchor Buyer Legal Name
-              </label>
-              <input
-                type="text"
-                value={newBuyerName}
-                onChange={(e) => setNewBuyerName(e.target.value)}
-                placeholder="Enter buyer corporate name"
-                required
-                className="w-full rounded-lg border border-[#CBD5E1] px-3 py-2 text-xs text-[#0F172A]"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-[#475569] mb-1">
-                Anchor Buyer 20-Char GLEIF vLEI
-              </label>
-              <input
-                type="text"
-                value={newBuyerLei}
-                onChange={(e) => setNewBuyerLei(e.target.value)}
-                placeholder="20-char alphanumeric LEI"
-                required
-                className="w-full rounded-lg border border-[#CBD5E1] px-3 py-2 font-mono text-xs text-[#0F172A]"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-[#475569] mb-1">
-                Face Value (USD)
-              </label>
-              <input
-                type="number"
-                value={newFaceValueUsd}
-                onChange={(e) => setNewFaceValueUsd(e.target.value)}
-                placeholder="e.g. 250000"
-                required
-                className="w-full rounded-lg border border-[#CBD5E1] px-3 py-2 font-mono text-xs text-[#0F172A]"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-[#475569] mb-1">
-                Discount Rate (bps, e.g. 900 = 9.00%)
-              </label>
-              <input
-                type="number"
-                value={newAprBps}
-                onChange={(e) => setNewAprBps(e.target.value)}
-                placeholder="e.g. 900"
-                required
-                className="w-full rounded-lg border border-[#CBD5E1] px-3 py-2 font-mono text-xs text-[#0F172A]"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-[#475569] mb-1">
-                Tenor (Days)
-              </label>
-              <input
-                type="number"
-                value={newTenorDays}
-                onChange={(e) => setNewTenorDays(e.target.value)}
-                placeholder="e.g. 60"
-                required
-                className="w-full rounded-lg border border-[#CBD5E1] px-3 py-2 font-mono text-xs text-[#0F172A]"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-[#475569] mb-1">
-                EU CBAM Embedded Carbon (kg CO2e)
-              </label>
-              <input
-                type="number"
-                value={newCbamKg}
-                onChange={(e) => setNewCbamKg(e.target.value)}
-                placeholder="e.g. 650"
-                required
-                className="w-full rounded-lg border border-[#CBD5E1] px-3 py-2 font-mono text-xs text-[#0F172A]"
-              />
-            </div>
-          </div>
-
-          <div className="flex justify-end">
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="rounded-lg bg-[#0A2540] px-4 py-2.5 text-xs font-semibold text-white hover:bg-[#1E293B] disabled:opacity-50 cursor-pointer"
-            >
-              {isSubmitting
-                ? 'Writing Invoice Record to Base L2...'
-                : 'Register Canonical Hash & Originate On-Chain'}
-            </button>
-          </div>
-        </form>
-      )}
-
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-        <div className="rounded-xl border border-[#E2E8F0] bg-[#FFFFFF] shadow-[0_1px_2px_rgba(15,23,42,0.03)] lg:col-span-8 overflow-hidden">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#E2E8F0] px-6 py-4">
-            <div>
+      {/* Primary Table & Summary View */}
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
+        {/* On-Chain Receivables Table */}
+        <div className="rounded-lg border border-slate-200 bg-white shadow-none lg:col-span-8 flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
               <div className="flex items-center gap-2">
-                <h2 className="text-[16px] font-bold tracking-[-0.02em] text-[#0F172A]">
-                  Supplier Portal — On-Chain Receivables ({invoices.length})
+                <h2 className="text-sm font-semibold text-slate-900">
+                  On-Chain Receivables
                 </h2>
-                <SemanticPill variant="emerald">100% DYNAMIC ON-CHAIN</SemanticPill>
+                <span className="rounded-full bg-slate-100 px-2 py-0.5 font-mono text-[11px] font-medium text-slate-600">
+                  {invoices.length} Notes
+                </span>
               </div>
-              <p className="mt-0.5 text-[13px] text-[#64748B]">
-                All records below are fetched live from InvoiceRegistry.sol on Base L2.
-              </p>
+              <button
+                type="button"
+                onClick={() => setIsOriginateDrawerOpen(true)}
+                className="inline-flex items-center gap-1.5 rounded-md bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800 transition cursor-pointer"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                <span>Originate E-Invoice</span>
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={() => setShowOriginateForm((prev) => !prev)}
-              className="rounded-lg bg-[#0A2540] px-3.5 py-2 text-xs font-semibold text-white hover:bg-[#1E293B] cursor-pointer"
-            >
-              + Originate E-Invoice On-Chain
-            </button>
-          </div>
 
-          {invoices.length === 0 ? (
-            <div className="p-8 text-center text-xs text-[#475569]">
-              No invoices registered on-chain yet. Use the <strong>Originate E-Invoice On-Chain</strong> form above to create your first receivable on Base L2.
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse text-left">
-                <thead>
-                  <tr className="border-b border-[#E2E8F0] bg-[#F8FAFC] text-[11px] font-semibold uppercase tracking-[0.05em] text-[#475569]">
-                    <th className="py-3 pl-6 pr-3">Select / Invoice</th>
-                    <th className="px-3 py-3">Anchor Buyer &amp; Rating</th>
-                    <th className="px-3 py-3">E-Invoice &amp; EAS Status</th>
-                    <th className="px-3 py-3 text-right">Tenor / APR</th>
-                    <th className="px-3 py-3 text-right">Face Value</th>
-                    <th className="py-3 pl-3 pr-6 text-right">Audit</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#E2E8F0] text-[13px]">
-                  {invoices.map((invoice) => {
-                    const isSelected = invoice.id === selectedInvoice?.id;
-                    const adapterInfo =
-                      EINVOICE_ADAPTER_SPECIFICATIONS[invoice.eInvoiceStandard] ??
-                      EINVOICE_ADAPTER_SPECIFICATIONS.PEPPOL_BIS_3_0;
-                    return (
-                      <tr
-                        key={invoice.id}
-                        onClick={() => setSelectedInvoiceId(invoice.id)}
-                        className={`transition cursor-pointer ${
-                          isSelected ? 'bg-[#EFF6FF]/60' : 'hover:bg-[#F8FAFC]'
-                        }`}
-                      >
-                        <td className="py-4 pl-6 pr-3 align-top">
-                          <div className="flex items-start gap-2.5">
-                            <input
-                              type="radio"
-                              name="selectedInvoice"
-                              checked={isSelected}
-                              onChange={() => setSelectedInvoiceId(invoice.id)}
-                              aria-label={`Select invoice ${invoice.invoiceNumber}`}
-                              className="mt-1 h-4 w-4 accent-[#0A2540]"
-                            />
-                            <div>
-                              <div className="font-mono text-[13px] font-bold text-[#0F172A] tabular-nums">
-                                {invoice.invoiceNumber}
-                              </div>
-                              <div className="text-[11px] text-[#64748B]">
-                                {invoice.corridor}
-                              </div>
-                              <div className="mt-1 font-mono text-[10px] text-[#475569]">
-                                Hash: {invoice.canonicalHash.slice(0, 10)}...
-                                {invoice.canonicalHash.slice(-6)}
+            {invoices.length === 0 ? (
+              <div className="py-8 text-center text-xs text-slate-500">
+                <p>No trade receivables registered on-chain yet.</p>
+                <button
+                  type="button"
+                  onClick={() => setIsOriginateDrawerOpen(true)}
+                  className="mt-3 inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 cursor-pointer"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  <span>Originate E-Invoice</span>
+                </button>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse text-left">
+                  <thead>
+                    <tr className="border-b border-slate-200 bg-slate-50/75 text-[11px] font-medium uppercase tracking-wider text-slate-500">
+                      <th className="py-2.5 pl-4 pr-2">Invoice / Corridor</th>
+                      <th className="px-3 py-2.5">Buyer / Obligor</th>
+                      <th className="px-3 py-2.5">Status</th>
+                      <th className="px-3 py-2.5 text-right">Tenor / APR</th>
+                      <th className="px-3 py-2.5 text-right">Face Value</th>
+                      <th className="py-2.5 pl-2 pr-4 text-right">Audit</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 text-xs">
+                    {invoices.map((invoice) => {
+                      const isSelected = invoice.id === selectedInvoice?.id;
+                      const adapterInfo =
+                        EINVOICE_ADAPTER_SPECIFICATIONS[invoice.eInvoiceStandard] ??
+                        EINVOICE_ADAPTER_SPECIFICATIONS.PEPPOL_BIS_3_0;
+                      return (
+                        <tr
+                          key={invoice.id}
+                          onClick={() => setSelectedInvoiceId(invoice.id)}
+                          className={`transition cursor-pointer ${
+                            isSelected ? 'bg-slate-50' : 'hover:bg-slate-50/60'
+                          }`}
+                        >
+                          <td className="py-3 pl-4 pr-2 align-top">
+                            <div className="flex items-start gap-2">
+                              <input
+                                type="radio"
+                                name="selectedInvoice"
+                                checked={isSelected}
+                                onChange={() => setSelectedInvoiceId(invoice.id)}
+                                aria-label={`Select invoice ${invoice.invoiceNumber}`}
+                                className="mt-0.5 h-3.5 w-3.5 accent-slate-900"
+                              />
+                              <div>
+                                <div className="font-mono font-semibold text-slate-900">
+                                  {invoice.invoiceNumber}
+                                </div>
+                                <div className="text-[11px] text-slate-500">
+                                  {invoice.corridor}
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        </td>
+                          </td>
 
-                        <td className="px-3 py-4 align-top">
-                          <div className="font-medium text-[#0F172A]">{invoice.buyerName}</div>
-                          <div className="mt-0.5 font-mono text-[11px] text-[#64748B]">
-                            vLEI: {invoice.buyerLei}
-                          </div>
-                          <div className="mt-1">
-                            <SemanticPill variant="blue">{invoice.buyerRating}</SemanticPill>
-                          </div>
-                        </td>
+                          <td className="px-3 py-3 align-top">
+                            <div className="font-medium text-slate-900">{invoice.buyerName}</div>
+                            <div className="font-mono text-[11px] text-slate-500 truncate max-w-[160px]">
+                              LEI: {invoice.buyerLei}
+                            </div>
+                          </td>
 
-                        <td className="px-3 py-4 align-top">
-                          <div className="flex flex-col items-start gap-1">
-                            <SemanticPill variant="slate">{adapterInfo.label}</SemanticPill>
-                            <SemanticPill variant="emerald">
-                              Buyer Co-Signed via EAS ✓
-                            </SemanticPill>
-                            <SemanticPill
-                              variant={invoice.status === 'FACTORED' ? 'blue' : 'emerald'}
+                          <td className="px-3 py-3 align-top">
+                            <span
+                              className={`inline-flex items-center rounded px-2 py-0.5 font-mono text-[10px] font-medium ${
+                                invoice.status === 'FACTORED'
+                                  ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                                  : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                              }`}
                             >
-                              State: {invoice.status}
-                            </SemanticPill>
-                          </div>
-                        </td>
+                              {invoice.status}
+                            </span>
+                            <div className="text-[10px] text-slate-500 mt-0.5">
+                              {adapterInfo.label}
+                            </div>
+                          </td>
 
-                        <td className="px-3 py-4 text-right align-top font-mono tabular-nums">
-                          <div className="font-semibold text-[#0F172A]">
-                            {invoice.tenorDays} Days
-                          </div>
-                          <div className="text-[12px] text-[#047857]">
-                            {(invoice.discountRateAprBps / 100).toFixed(2)}% APR
-                          </div>
-                        </td>
+                          <td className="px-3 py-3 text-right align-top font-mono tabular-nums">
+                            <div className="font-medium text-slate-900">
+                              {invoice.tenorDays}d
+                            </div>
+                            <div className="text-[11px] text-emerald-600">
+                              {(invoice.discountRateAprBps / 100).toFixed(2)}%
+                            </div>
+                          </td>
 
-                        <td className="px-3 py-4 text-right align-top font-mono tabular-nums">
-                          <div className="text-[14px] font-bold text-[#0F172A]">
-                            ${invoice.faceValueUsd.toLocaleString()}
-                          </div>
-                          <div className="text-[11px] text-[#64748B]">Due {invoice.dueDate}</div>
-                        </td>
+                          <td className="px-3 py-3 text-right align-top font-mono tabular-nums">
+                            <div className="font-semibold text-slate-900">
+                              ${invoice.faceValueUsd.toLocaleString()}
+                            </div>
+                            <div className="text-[10px] text-slate-400">
+                              Due {invoice.dueDate}
+                            </div>
+                          </td>
 
-                        <td className="py-4 pl-3 pr-6 text-right align-top">
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onInspectAudit(invoice);
-                            }}
-                            className="rounded-md border border-[#CBD5E1] bg-[#FFFFFF] px-2.5 py-1.5 font-mono text-[11px] font-semibold text-[#0F172A] hover:border-[#0A2540] cursor-pointer"
-                          >
-                            ZK / EAS Proof
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
+                          <td className="py-3 pl-2 pr-4 text-right align-top">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onInspectAudit(invoice);
+                              }}
+                              className="rounded border border-slate-200 bg-white px-2 py-1 font-mono text-[11px] font-medium text-slate-700 hover:bg-slate-50 cursor-pointer"
+                            >
+                              Proof
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
         </div>
 
+        {/* Early-Pay Summary Card */}
         <div className="lg:col-span-4">
           {selectedInvoice ? (
-            <div className="sticky top-20 rounded-xl border border-[#CBD5E1] bg-[#FFFFFF] p-6 shadow-xs">
-              <div className="flex items-center justify-between border-b border-[#E2E8F0] pb-3">
+            <div className="sticky top-20 rounded-lg border border-slate-200 bg-white p-4 shadow-none space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div>
-                  <span className="text-[11px] font-bold uppercase tracking-[0.05em] text-[#64748B]">
-                    Instant Early-Pay Summary
-                  </span>
-                  <h3 className="text-[16px] font-bold text-[#0F172A]">
+                  <div className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
+                    Early-Pay Summary
+                  </div>
+                  <h3 className="text-sm font-semibold text-slate-900 mt-0.5">
                     {selectedInvoice.invoiceNumber}
                   </h3>
                 </div>
-                <SemanticPill variant="emerald">UNCITRAL MLETR</SemanticPill>
+                <span className="rounded bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700 border border-emerald-200">
+                  True Sale
+                </span>
               </div>
 
-              <div className="mt-4">
-                <label className="block text-[11px] font-semibold uppercase tracking-[0.05em] text-[#475569]">
-                  Select Settlement Payout Rail
+              <div>
+                <label className="block text-[11px] font-medium uppercase tracking-wider text-slate-500 mb-1.5">
+                  Payout Rail
                 </label>
-                <div className="mt-1.5 grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
                     onClick={() => setSettlementRail('BASE_USDC_ERC4337')}
-                    className={`rounded-lg border p-2.5 text-left transition cursor-pointer ${
+                    className={`rounded-md border p-2 text-left transition cursor-pointer ${
                       settlementRail === 'BASE_USDC_ERC4337'
-                        ? 'border-[#0A2540] bg-[#EFF6FF]/60'
-                        : 'border-[#E2E8F0] bg-[#F8FAFC]'
+                        ? 'border-slate-900 bg-slate-50'
+                        : 'border-slate-200 bg-white hover:bg-slate-50/50'
                     }`}
                   >
-                    <div className="font-mono text-[11px] font-bold text-[#0F172A]">
-                      Instant USDC (Base)
+                    <div className="font-mono text-xs font-semibold text-slate-900">
+                      Base USDC
                     </div>
-                    <div className="text-[10px] text-[#64748B]">Atomic DvP • &lt; 2 mins</div>
+                    <div className="text-[10px] text-slate-500">Atomic DvP</div>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setSettlementRail('VIRTUAL_IBAN_FIAT')}
-                    className={`rounded-lg border p-2.5 text-left transition cursor-pointer ${
+                    className={`rounded-md border p-2 text-left transition cursor-pointer ${
                       settlementRail === 'VIRTUAL_IBAN_FIAT'
-                        ? 'border-[#0A2540] bg-[#EFF6FF]/60'
-                        : 'border-[#E2E8F0] bg-[#F8FAFC]'
+                        ? 'border-slate-900 bg-slate-50'
+                        : 'border-slate-200 bg-white hover:bg-slate-50/50'
                     }`}
                   >
-                    <div className="font-mono text-[11px] font-bold text-[#0F172A]">
-                      Virtual IBAN / UPI
+                    <div className="font-mono text-xs font-semibold text-slate-900">
+                      Virtual IBAN
                     </div>
-                    <div className="text-[10px] text-[#64748B]">SEPA / FedNow / Bank Wire</div>
+                    <div className="text-[10px] text-slate-500">SEPA / Wire</div>
                   </button>
                 </div>
               </div>
 
-              <div className="mt-5 space-y-2.5 rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] p-4 font-mono text-[12px] tabular-nums">
-                <div className="flex justify-between text-[#334155]">
-                  <span>Verified Face Value:</span>
-                  <span className="font-semibold text-[#0F172A]">
+              <div className="space-y-2 rounded-md border border-slate-200 bg-slate-50/60 p-3 font-mono text-xs tabular-nums">
+                <div className="flex justify-between text-slate-600">
+                  <span>Face Value:</span>
+                  <span className="font-medium text-slate-900">
                     ${discountMath.faceValueUsd.toLocaleString()}.00
                   </span>
                 </div>
-                <div className="flex justify-between text-[#334155]">
+                <div className="flex justify-between text-slate-600">
                   <span>
-                    Financier Discount ({selectedInvoice.tenorDays}d @{' '}
-                    {discountMath.effectiveAprPercent}%):
+                    Discount ({selectedInvoice.tenorDays}d @ {discountMath.effectiveAprPercent}%):
                   </span>
-                  <span className="text-[#991B1B]">
+                  <span className="text-red-700">
                     -${discountMath.discountYieldUsd.toLocaleString()}.00
                   </span>
                 </div>
-                <div className="flex justify-between text-[#334155]">
-                  <span>Diptos Origination Fee (10 bps cap $150):</span>
-                  <span className="text-[#64748B]">
+                <div className="flex justify-between text-slate-600">
+                  <span>Platform Fee (10 bps):</span>
+                  <span className="text-slate-500">
                     -${discountMath.platformFeeUsd.toLocaleString()}.00
                   </span>
                 </div>
-                <div className="flex justify-between text-[#334155]">
-                  <span>Base L2 Network Gas:</span>
-                  <span className="font-semibold text-[#047857]">
-                    {walletExecutionMode === 'smart-wallet'
-                      ? '$0.00 (Sponsored ERC-4337)'
-                      : 'MetaMask EOA Signer'}
+                <div className="flex justify-between text-slate-600">
+                  <span>Gas:</span>
+                  <span className="text-emerald-700 font-medium">
+                    {walletExecutionMode === 'smart-wallet' ? '$0.00 (Sponsored)' : 'MetaMask EOA'}
                   </span>
                 </div>
 
-                <div className="border-t border-[#CBD5E1] pt-2.5 flex items-baseline justify-between">
-                  <span className="font-sans text-[13px] font-bold text-[#0F172A]">
-                    Net Cash Disbursed Today:
-                  </span>
-                  <span className="text-[20px] font-bold text-[#047857]">
+                <div className="border-t border-slate-200 pt-2 flex items-baseline justify-between font-sans">
+                  <span className="text-xs font-medium text-slate-900">Net Disbursed:</span>
+                  <span className="font-mono text-base font-bold text-slate-900">
                     ${discountMath.netSupplierPayoutUsd.toLocaleString()}.00
                   </span>
                 </div>
@@ -617,22 +453,196 @@ export function SupplierWorkspaceView({
                 type="button"
                 disabled={isSubmitting || selectedInvoice.status === 'FACTORED'}
                 onClick={handleMintAndAccelerate}
-                className="mt-5 w-full rounded-lg bg-[#0A2540] px-4 py-3 text-[13px] font-semibold text-[#FFFFFF] transition hover:bg-[#0F172A] disabled:opacity-50 cursor-pointer"
+                className="w-full rounded-md bg-slate-900 py-2.5 text-xs font-medium text-white transition hover:bg-slate-800 disabled:opacity-50 cursor-pointer"
               >
                 {selectedInvoice.status === 'FACTORED'
-                  ? 'Already Factored & Funded on Base'
+                  ? 'Already Factored on Base'
                   : isSubmitting
-                  ? 'Signing & Minting ERC-3643...'
-                  : 'Get Cash in 24h (Mint & Fund ERC-3643)'}
+                  ? 'Minting ERC-3643 Note...'
+                  : 'Accelerate Receivable (Mint ERC-3643)'}
               </button>
             </div>
           ) : (
-            <div className="rounded-xl border border-[#CBD5E1] bg-white p-6 text-xs text-[#475569]">
-              Originate an e-invoice on-chain to calculate discount math and mint an ERC-3643 token.
+            <div className="rounded-lg border border-slate-200 bg-white p-4 text-xs text-slate-500 text-center">
+              Select an invoice to view early-pay terms and mint on-chain.
             </div>
           )}
         </div>
       </div>
+
+      {/* Slide-over Drawer / Modal for Origination */}
+      {isOriginateDrawerOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs">
+          <div className="relative w-full max-w-lg rounded-xl border border-slate-200 bg-white p-5 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div>
+                <h3 className="text-sm font-semibold text-slate-900">
+                  Originate E-Invoice On-Chain
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Anchors canonical hash &amp; EAS acceptance to Base L2.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsOriginateDrawerOpen(false)}
+                className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition"
+                aria-label="Close origination modal"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleOriginateNewInvoiceOnChain} className="mt-4 space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-medium text-slate-600 mb-1">
+                    Invoice Number
+                  </label>
+                  <input
+                    type="text"
+                    value={newInvNumber}
+                    onChange={(e) => setNewInvNumber(e.target.value)}
+                    placeholder="INV-2026-001"
+                    required
+                    className="h-9 w-full rounded-md border border-slate-300 px-3 text-xs text-slate-900 font-mono focus:border-slate-900 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-medium text-slate-600 mb-1">
+                    Trade Corridor
+                  </label>
+                  <input
+                    type="text"
+                    value={newCorridor}
+                    onChange={(e) => setNewCorridor(e.target.value)}
+                    placeholder="SG -> EU"
+                    required
+                    className="h-9 w-full rounded-md border border-slate-300 px-3 text-xs text-slate-900 focus:border-slate-900 focus:outline-none"
+                  />
+                </div>
+
+                <div className="col-span-2">
+                  <label className="block text-[11px] font-medium text-slate-600 mb-1">
+                    E-Invoice Standard
+                  </label>
+                  <select
+                    value={newStandard}
+                    onChange={(e) => setNewStandard(e.target.value as EInvoiceStandard)}
+                    className="h-9 w-full rounded-md border border-slate-300 bg-white px-3 text-xs text-slate-900 focus:border-slate-900 focus:outline-none"
+                  >
+                    <option value="PEPPOL_BIS_3_0">Peppol BIS Billing 3.0 (EU / SG)</option>
+                    <option value="INDIA_GSTN_IRN">India GSTN e-Invoice IRN</option>
+                    <option value="MEXICO_SAT_CFDI">Mexico SAT CFDI 4.0</option>
+                    <option value="US_ERP_3WAY_MATCH">US ERP 3-Way Match + eBL</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-medium text-slate-600 mb-1">
+                    Anchor Buyer Legal Name
+                  </label>
+                  <input
+                    type="text"
+                    value={newBuyerName}
+                    onChange={(e) => setNewBuyerName(e.target.value)}
+                    placeholder="Buyer Legal Name"
+                    required
+                    className="h-9 w-full rounded-md border border-slate-300 px-3 text-xs text-slate-900 focus:border-slate-900 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-medium text-slate-600 mb-1">
+                    Buyer 20-Char GLEIF vLEI
+                  </label>
+                  <input
+                    type="text"
+                    value={newBuyerLei}
+                    onChange={(e) => setNewBuyerLei(e.target.value)}
+                    placeholder="20-char LEI"
+                    required
+                    className="h-9 w-full rounded-md border border-slate-300 px-3 text-xs text-slate-900 font-mono focus:border-slate-900 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-medium text-slate-600 mb-1">
+                    Face Value (USD)
+                  </label>
+                  <input
+                    type="number"
+                    value={newFaceValueUsd}
+                    onChange={(e) => setNewFaceValueUsd(e.target.value)}
+                    placeholder="250000"
+                    required
+                    className="h-9 w-full rounded-md border border-slate-300 px-3 text-xs text-slate-900 font-mono focus:border-slate-900 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-medium text-slate-600 mb-1">
+                    Discount Rate (bps, 900 = 9%)
+                  </label>
+                  <input
+                    type="number"
+                    value={newAprBps}
+                    onChange={(e) => setNewAprBps(e.target.value)}
+                    placeholder="900"
+                    required
+                    className="h-9 w-full rounded-md border border-slate-300 px-3 text-xs text-slate-900 font-mono focus:border-slate-900 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-medium text-slate-600 mb-1">
+                    Tenor (Days)
+                  </label>
+                  <input
+                    type="number"
+                    value={newTenorDays}
+                    onChange={(e) => setNewTenorDays(e.target.value)}
+                    placeholder="60"
+                    required
+                    className="h-9 w-full rounded-md border border-slate-300 px-3 text-xs text-slate-900 font-mono focus:border-slate-900 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-medium text-slate-600 mb-1">
+                    EU CBAM Carbon (kg CO2e)
+                  </label>
+                  <input
+                    type="number"
+                    value={newCbamKg}
+                    onChange={(e) => setNewCbamKg(e.target.value)}
+                    placeholder="650"
+                    className="h-9 w-full rounded-md border border-slate-300 px-3 text-xs text-slate-900 font-mono focus:border-slate-900 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 border-t border-slate-100 pt-3">
+                <button
+                  type="button"
+                  onClick={() => setIsOriginateDrawerOpen(false)}
+                  className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="rounded-md bg-slate-900 px-4 py-1.5 text-xs font-medium text-white hover:bg-slate-800 disabled:opacity-50 cursor-pointer"
+                >
+                  {isSubmitting ? 'Writing to Base L2...' : 'Register On-Chain'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

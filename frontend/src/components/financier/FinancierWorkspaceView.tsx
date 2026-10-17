@@ -8,7 +8,6 @@ import {
   calculateInvoiceDiscountMath,
 } from '@/layers/layer2-base-protocol';
 import { useDiptosIdentity } from '@/hooks/useDiptosIdentity';
-import { SemanticPill } from '@/components/ui/SemanticPill';
 
 export interface FinancierWorkspaceViewProps {
   invoices: RWAInvoiceRecord[];
@@ -56,7 +55,7 @@ export function FinancierWorkspaceView({
         amountUsd,
       });
       setDvpReceipt({
-        invoiceNumber: `${trancheId} Vault Deposit ($${amountUsd.toLocaleString()})`,
+        invoiceNumber: `${trancheId} Deposit ($${amountUsd.toLocaleString()})`,
         hash: res.hash,
         executionMode: res.executionMode,
       });
@@ -121,85 +120,76 @@ export function FinancierWorkspaceView({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
+      {/* Execution Banner */}
       {dvpReceipt && (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#BFDBFE] bg-[#EFF6FF] px-5 py-3.5">
-          <div>
-            <div className="flex items-center gap-2">
-              <SemanticPill variant="blue">
-                ON-CHAIN TRANSACTION EXECUTED ({dvpReceipt.executionMode.toUpperCase()})
-              </SemanticPill>
-              <span className="text-[13px] font-semibold text-[#0F172A]">
-                {dvpReceipt.invoiceNumber} Confirmed on Base L2
-              </span>
-            </div>
-            <div className="mt-1 font-mono text-[11px] text-[#1D4ED8] break-all">
-              Base L2 Tx: {dvpReceipt.hash}
-            </div>
+        <div className="flex items-center justify-between rounded-lg border border-blue-200 bg-blue-50 px-4 py-2.5 text-xs text-blue-900">
+          <div className="flex items-center gap-2">
+            <span className="font-semibold">{dvpReceipt.invoiceNumber}</span>
+            <span>Confirmed on Base L2</span>
+            <span className="font-mono text-[11px] text-blue-700 truncate max-w-xs">
+              Tx: {dvpReceipt.hash}
+            </span>
           </div>
           <button
             type="button"
             onClick={() => setDvpReceipt(null)}
-            className="rounded border border-[#BFDBFE] bg-[#FFFFFF] px-2.5 py-1 text-[11px] font-semibold text-[#1D4ED8] cursor-pointer"
+            className="rounded px-2 py-0.5 text-xs font-medium text-blue-700 hover:bg-blue-100 cursor-pointer"
           >
             Dismiss
           </button>
         </div>
       )}
 
-      {/* Top Row: Live On-Chain ERC-4626 Senior DROP & Junior First-Loss TIN Cards */}
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+      {/* Compact 2-Card Senior/Junior Tranche Summary Bar (py-3 px-4) */}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {liveVaults.map((vault) => (
           <div
             key={vault.id}
-            className="rounded-xl border border-[#E2E8F0] bg-[#FFFFFF] p-6 shadow-[0_1px_2px_rgba(15,23,42,0.03)]"
+            className="rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-none flex flex-col justify-between gap-3"
           >
-            <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start justify-between gap-2">
               <div>
                 <div className="flex items-center gap-2">
-                  <SemanticPill variant={vault.id === 'SENIOR_DROP' ? 'emerald' : 'blue'}>
-                    {vault.symbol} • ERC-4626 + ERC-3643
-                  </SemanticPill>
-                  <span className="font-mono text-[11px] text-[#64748B]">
-                    {vault.trancheRole}
+                  <span className="font-mono font-bold text-xs text-slate-900">
+                    {vault.symbol}
                   </span>
+                  <span className="text-[11px] text-slate-500">{vault.trancheRole}</span>
                 </div>
-                <h3 className="mt-2 text-[17px] font-bold text-[#0F172A]">{vault.name}</h3>
+                <div className="text-xs font-medium text-slate-700 mt-0.5">
+                  {vault.name}
+                </div>
               </div>
-
               <div className="text-right font-mono tabular-nums">
-                <div className="text-[11px] font-semibold uppercase text-[#64748B]">
-                  Target Net APY
-                </div>
-                <div className="text-[24px] font-bold text-[#047857]">
+                <div className="text-[10px] uppercase text-slate-400">Target APY</div>
+                <div className="text-base font-bold text-emerald-600">
                   {vault.targetApyPercent.toFixed(2)}%
                 </div>
               </div>
             </div>
 
-            <div className="mt-4 grid grid-cols-3 gap-4 border-y border-[#E2E8F0] py-3 font-mono text-[12px] tabular-nums">
+            <div className="grid grid-cols-3 gap-2 border-t border-slate-100 pt-2 font-mono text-xs tabular-nums">
               <div>
-                <div className="text-[10px] uppercase text-[#64748B]">Live Tranche TVL</div>
-                <div className="mt-0.5 font-bold text-[#0F172A]">
+                <div className="text-[10px] text-slate-400">TVL</div>
+                <div className="font-semibold text-slate-900">
                   ${vault.tvlUsd.toLocaleString('en-US')}
                 </div>
               </div>
               <div>
-                <div className="text-[10px] uppercase text-[#64748B]">Collat. Ratio</div>
-                <div className="mt-0.5 font-bold text-[#0F172A]">
+                <div className="text-[10px] text-slate-400">Collat.</div>
+                <div className="font-semibold text-slate-900">
                   {vault.collateralizationRatioPercent.toFixed(1)}%
                 </div>
               </div>
               <div>
-                <div className="text-[10px] uppercase text-[#64748B]">Avg Maturity</div>
-                <div className="mt-0.5 font-bold text-[#0F172A]">
-                  {vault.weightedAvgTenorDays} Days
+                <div className="text-[10px] text-slate-400">Tenor</div>
+                <div className="font-semibold text-slate-900">
+                  {vault.weightedAvgTenorDays}d
                 </div>
               </div>
             </div>
 
-            {/* Live Vault Deposit Controls */}
-            <div className="mt-4 flex items-center gap-2">
+            <div className="flex items-center gap-2 pt-1 border-t border-slate-100">
               <input
                 type="number"
                 value={depositAmounts[vault.id] || '250000'}
@@ -209,147 +199,145 @@ export function FinancierWorkspaceView({
                     [vault.id]: e.target.value,
                   }))
                 }
-                className="w-36 rounded-lg border border-[#CBD5E1] bg-[#F8FAFC] px-3 py-1.5 font-mono text-xs text-[#0F172A]"
-                placeholder="Amount USD"
+                className="h-8 w-28 rounded-md border border-slate-300 bg-slate-50 px-2.5 font-mono text-xs text-slate-900 focus:border-slate-900 focus:outline-none"
+                placeholder="Amount"
               />
               <button
                 type="button"
                 disabled={depositingTranche === vault.id}
                 onClick={() => handleDepositVault(vault.id)}
-                className="flex-1 rounded-lg bg-[#0A2540] px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-[#1E293B] disabled:opacity-50 cursor-pointer"
+                className="flex-1 h-8 rounded-md bg-slate-900 px-3 text-xs font-medium text-white hover:bg-slate-800 disabled:opacity-50 transition cursor-pointer"
               >
                 {depositingTranche === vault.id
-                  ? 'Depositing On-Chain...'
-                  : `Deposit dUSDC into ${vault.symbol}`}
+                  ? 'Depositing...'
+                  : `Deposit into ${vault.symbol}`}
               </button>
-            </div>
-
-            <div className="mt-3 flex items-center justify-between text-[11px] text-[#64748B]">
-              <span className="font-mono">
-                Vault: {vault.erc4626VaultAddress.slice(0, 10)}...
-                {vault.erc4626VaultAddress.slice(-6)}
-              </span>
-              <SemanticPill variant="emerald">vLEI KYB GATED ✓</SemanticPill>
             </div>
           </div>
         ))}
       </div>
 
-      {/* Institutional ERC-3643 Whole-Invoice Orderbook with 2-Second Trust Scorecard */}
-      <div className="rounded-xl border border-[#E2E8F0] bg-[#FFFFFF] shadow-[0_1px_2px_rgba(15,23,42,0.03)] overflow-hidden">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#E2E8F0] px-6 py-4">
-          <div>
-            <h2 className="text-[16px] font-bold tracking-[-0.02em] text-[#0F172A]">
-              Financier Credit Desk — Whole-Invoice ERC-3643 Orderbook
+      {/* Whole-Invoice ERC-3643 Orderbook Table */}
+      <div className="rounded-lg border border-slate-200 bg-white shadow-none overflow-hidden">
+        <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
+          <div className="flex items-center gap-2">
+            <h2 className="text-sm font-semibold text-slate-900">
+              Whole-Invoice ERC-3643 Orderbook
             </h2>
-            <p className="mt-0.5 text-[13px] text-[#64748B]">
-              Every row surfaces the 2-Second Trust Scorecard: (1) Unique Hash, (2) Buyer EAS Acceptance, and (3) ZK CBAM Proof.
-            </p>
+            <span className="rounded-full bg-slate-100 px-2 py-0.5 font-mono text-[11px] font-medium text-slate-600">
+              {invoices.length} Available
+            </span>
           </div>
-          <SemanticPill variant="blue">ATOMIC DvP ESCROW (USDC / vIBAN)</SemanticPill>
+          <span className="text-[11px] font-mono text-slate-500">
+            Atomic DvP Escrow
+          </span>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-left">
-            <thead>
-              <tr className="border-b border-[#E2E8F0] bg-[#F8FAFC] text-[11px] font-semibold uppercase tracking-[0.05em] text-[#475569]">
-                <th className="py-3 pl-6 pr-3">ERC-3643 Note / Obligor</th>
-                <th className="px-3 py-3">2-Second Trust Scorecard (3 Layers)</th>
-                <th className="px-3 py-3 text-right">Tenor &amp; Net Yield</th>
-                <th className="px-3 py-3 text-right">Face Value</th>
-                <th className="py-3 pl-3 pr-6 text-right">Execution &amp; Provenance</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#E2E8F0] text-[13px]">
-              {invoices.map((invoice) => {
-                const isFunding = fundingInvoiceId === invoice.id;
-                return (
-                  <tr key={invoice.id} className="hover:bg-[#F8FAFC]">
-                    <td className="py-4 pl-6 pr-3 align-top">
-                      <div className="font-mono text-[13px] font-bold text-[#0F172A]">
-                        {invoice.invoiceNumber}
-                      </div>
-                      <div className="font-medium text-[#0F172A]">{invoice.buyerName}</div>
-                      <div className="font-mono text-[11px] text-[#64748B]">
-                        Obligor vLEI: {invoice.buyerLei} • {invoice.buyerRating}
-                      </div>
-                    </td>
+        {invoices.length === 0 ? (
+          <div className="py-8 text-center text-xs text-slate-500">
+            No invoices currently available in the orderbook.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-left">
+              <thead>
+                <tr className="border-b border-slate-200 bg-slate-50/75 text-[11px] font-medium uppercase tracking-wider text-slate-500">
+                  <th className="py-2.5 pl-4 pr-2">Note / Obligor</th>
+                  <th className="px-3 py-2.5">Trust Verification</th>
+                  <th className="px-3 py-2.5 text-right">Tenor / APR</th>
+                  <th className="px-3 py-2.5 text-right">Face Value</th>
+                  <th className="py-2.5 pl-2 pr-4 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-xs">
+                {invoices.map((invoice) => {
+                  const isFunding = fundingInvoiceId === invoice.id;
+                  return (
+                    <tr key={invoice.id} className="hover:bg-slate-50/60 transition">
+                      <td className="py-3 pl-4 pr-2 align-top">
+                        <div className="font-mono font-semibold text-slate-900">
+                          {invoice.invoiceNumber}
+                        </div>
+                        <div className="font-medium text-slate-800">{invoice.buyerName}</div>
+                        <div className="font-mono text-[11px] text-slate-500 truncate max-w-[180px]">
+                          LEI: {invoice.buyerLei}
+                        </div>
+                      </td>
 
-                    <td className="px-3 py-4 align-top">
-                      <div className="flex flex-wrap gap-1.5">
-                        <SemanticPill variant="emerald">
-                          1. Unique Hash ✓ (Base + MonetaGo)
-                        </SemanticPill>
-                        <SemanticPill variant="blue">
-                          2. Buyer EAS ✓ (vLEI Co-Signed)
-                        </SemanticPill>
-                        <SemanticPill variant="emerald">
-                          3. ZK CBAM Verified ✓ (ISO-14064)
-                        </SemanticPill>
-                      </div>
-                      <div className="mt-1.5 font-mono text-[11px] text-[#64748B]">
-                        Escrow: {invoice.virtualIbanAccount}
-                      </div>
-                    </td>
+                      <td className="px-3 py-3 align-top">
+                        <span className="inline-flex items-center rounded bg-emerald-50 px-2 py-0.5 font-mono text-[10px] font-medium text-emerald-700 border border-emerald-200">
+                          Trust: 3/3 Verified
+                        </span>
+                        <div className="text-[10px] text-slate-500 mt-1">
+                          Hash ✓ • EAS ✓ • ZK CBAM ✓
+                        </div>
+                      </td>
 
-                    <td className="px-3 py-4 text-right align-top font-mono tabular-nums">
-                      <div className="text-[14px] font-bold text-[#047857]">
-                        {(invoice.discountRateAprBps / 100).toFixed(2)}% APR
-                      </div>
-                      <div className="text-[11px] text-[#475569]">
-                        {invoice.tenorDays} Days • USDC / vIBAN
-                      </div>
-                    </td>
+                      <td className="px-3 py-3 text-right align-top font-mono tabular-nums">
+                        <div className="font-semibold text-emerald-600">
+                          {(invoice.discountRateAprBps / 100).toFixed(2)}% APR
+                        </div>
+                        <div className="text-[11px] text-slate-500">
+                          {invoice.tenorDays}d • USDC
+                        </div>
+                      </td>
 
-                    <td className="px-3 py-4 text-right align-top font-mono tabular-nums">
-                      <div className="text-[14px] font-bold text-[#0F172A]">
-                        ${invoice.faceValueUsd.toLocaleString()}
-                      </div>
-                      <div className="text-[11px] text-[#64748B]">
-                        State: {invoice.status}
-                      </div>
-                    </td>
-
-                    <td className="py-4 pl-3 pr-6 text-right align-top">
-                      <div className="flex items-center justify-end gap-2">
-                        <button
-                          type="button"
-                          onClick={() => onInspectAudit(invoice)}
-                          className="rounded-md border border-[#CBD5E1] bg-[#FFFFFF] px-2.5 py-1.5 font-mono text-[11px] font-semibold text-[#0F172A] hover:border-[#0A2540] cursor-pointer"
+                      <td className="px-3 py-3 text-right align-top font-mono tabular-nums">
+                        <div className="font-semibold text-slate-900">
+                          ${invoice.faceValueUsd.toLocaleString()}
+                        </div>
+                        <span
+                          className={`inline-flex items-center rounded px-1.5 py-0.2 font-mono text-[10px] font-medium mt-0.5 ${
+                            invoice.status === 'FACTORED'
+                              ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                              : 'bg-slate-100 text-slate-600'
+                          }`}
                         >
-                          ZK / EAS Proof
-                        </button>
-                        {invoice.status === 'FACTORED' ? (
+                          {invoice.status}
+                        </span>
+                      </td>
+
+                      <td className="py-3 pl-2 pr-4 text-right align-top">
+                        <div className="flex items-center justify-end gap-1.5">
                           <button
                             type="button"
-                            disabled={isFunding}
-                            onClick={() => handleSettleInvoice(invoice)}
-                            className="rounded-md bg-[#059669] px-3 py-1.5 text-[12px] font-semibold text-[#FFFFFF] hover:bg-[#047857] disabled:opacity-50 cursor-pointer"
+                            onClick={() => onInspectAudit(invoice)}
+                            className="rounded border border-slate-200 bg-white px-2 py-1 font-mono text-[11px] font-medium text-slate-700 hover:bg-slate-50 cursor-pointer"
                           >
-                            {isFunding ? 'Settling...' : 'Settle Maturity'}
+                            Proof
                           </button>
-                        ) : (
-                          <button
-                            type="button"
-                            disabled={isFunding || invoice.status === 'SETTLED'}
-                            onClick={() => handleFundAtomicDvP(invoice)}
-                            className="rounded-md bg-[#0A2540] px-3 py-1.5 text-[12px] font-semibold text-[#FFFFFF] hover:bg-[#0F172A] disabled:opacity-50 cursor-pointer"
-                          >
-                            {invoice.status === 'SETTLED'
-                              ? 'Settled ✓'
-                              : isFunding
-                              ? 'Funding DvP...'
-                              : 'Fund Atomic DvP'}
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                          {invoice.status === 'FACTORED' ? (
+                            <button
+                              type="button"
+                              disabled={isFunding}
+                              onClick={() => handleSettleInvoice(invoice)}
+                              className="rounded bg-emerald-600 px-2.5 py-1 text-[11px] font-medium text-white hover:bg-emerald-700 disabled:opacity-50 cursor-pointer"
+                            >
+                              {isFunding ? 'Settling...' : 'Settle'}
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              disabled={isFunding || invoice.status === 'SETTLED'}
+                              onClick={() => handleFundAtomicDvP(invoice)}
+                              className="rounded bg-slate-900 px-2.5 py-1 text-[11px] font-medium text-white hover:bg-slate-800 disabled:opacity-50 cursor-pointer"
+                            >
+                              {invoice.status === 'SETTLED'
+                                ? 'Settled'
+                                : isFunding
+                                ? 'Funding...'
+                                : 'Fund DvP'}
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );

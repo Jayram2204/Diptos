@@ -1,5 +1,5 @@
-import { Rwa3dLandingPage } from '@/components/landing/Rwa3dLandingPage';
+import { AppWorkspaceShell } from '@/components/layout/AppWorkspaceShell';
 
 export default function HomePage() {
-  return <Rwa3dLandingPage />;
+  return <AppWorkspaceShell />;
 }

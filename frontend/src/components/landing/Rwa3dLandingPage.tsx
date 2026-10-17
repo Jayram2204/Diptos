@@ -23,12 +23,19 @@ import { SemanticPill } from '@/components/ui/SemanticPill';
 export function Rwa3dLandingPage() {
   const {
     isAuthenticated,
+    authMethod,
     protocolState,
     setIsAuthModalOpen,
     setIsFaucetModalOpen,
     activeAddress,
     authIdentifier,
   } = useDiptosIdentity();
+
+  const isWalletConnected = Boolean(
+    isAuthenticated &&
+      activeAddress &&
+      (authIdentifier?.startsWith('MetaMask (') || authMethod !== 'browser-wallet')
+  );
 
   const [exploded3dView, setExploded3dView] = useState<boolean>(true);
   const [hoveredPlane, setHoveredPlane] = useState<number | null>(null);
@@ -146,10 +153,25 @@ export function Rwa3dLandingPage() {
                 <button
                   type="button"
                   onClick={() => setIsAuthModalOpen(true)}
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-sky-400/40 bg-sky-500/15 px-4 py-3 font-mono text-xs font-semibold text-sky-200 hover:bg-sky-500/25 cursor-pointer"
+                  className={`inline-flex items-center gap-1.5 rounded-xl border px-4 py-3 font-mono text-xs font-semibold transition cursor-pointer ${
+                    isWalletConnected && activeAddress
+                      ? 'border-emerald-400/50 bg-emerald-500/20 text-emerald-200 hover:bg-emerald-500/30'
+                      : 'border-sky-400/40 bg-sky-500/15 text-sky-200 hover:bg-sky-500/25'
+                  }`}
                 >
-                  <KeyRound className="h-4 w-4" />
-                  Connect / Switch MetaMask &amp; DID
+                  {isWalletConnected && activeAddress ? (
+                    <>
+                      <span className="h-2 w-2 rounded-full bg-emerald-400" />
+                      <span>
+                        Wallet Connected ({activeAddress.slice(0, 6)}...{activeAddress.slice(-4)}) • Switch / DID
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <KeyRound className="h-4 w-4" />
+                      <span>Connect / Switch MetaMask &amp; DID</span>
+                    </>
+                  )}
                 </button>
               </div>
             </div>

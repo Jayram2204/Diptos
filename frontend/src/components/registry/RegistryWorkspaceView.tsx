@@ -7,7 +7,6 @@ import {
   type RWAInvoiceRecord,
 } from '@/layers/layer1-rwa-core';
 import { useDiptosIdentity } from '@/hooks/useDiptosIdentity';
-import { SemanticPill } from '@/components/ui/SemanticPill';
 
 export interface RegistryWorkspaceViewProps {
   invoices: RWAInvoiceRecord[];
@@ -98,120 +97,129 @@ export function RegistryWorkspaceView({ invoices }: RegistryWorkspaceViewProps) 
   };
 
   return (
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-      {/* Left 6 Columns: Live Canonical Hash Anti-Double-Financing Simulator */}
-      <div className="rounded-xl border border-[#E2E8F0] bg-[#FFFFFF] p-6 shadow-xs lg:col-span-6">
-        <div className="flex items-center justify-between border-b border-[#E2E8F0] pb-4">
+    <div className="grid grid-cols-1 gap-5 lg:grid-cols-12 items-start">
+      {/* Left 5 Columns: Canonical Hash Simulator */}
+      <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-none lg:col-span-5 space-y-3">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
           <div>
-            <span className="font-mono text-[11px] font-bold uppercase tracking-[0.05em] text-[#475569]">
-              Layer 1 — InvoiceRegistry.sol + MonetaGo Bridge
-            </span>
-            <h2 className="mt-0.5 text-[17px] font-bold text-[#0F172A]">
-              Anti-Double-Financing Canonical Hash Simulator
+            <h2 className="text-sm font-semibold text-slate-900">
+              Canonical Hash Simulator
             </h2>
+            <p className="text-[11px] text-slate-500">
+              Deterministic Keccak256 Anti-Double-Financing
+            </p>
           </div>
-          <SemanticPill variant="blue">KECCAK256 NORMALIZER</SemanticPill>
+          <span className="font-mono text-[10px] text-slate-500">
+            InvoiceRegistry.sol
+          </span>
         </div>
 
-        <p className="mt-3 text-[13px] text-[#334155]">
-          Enter invoice parameters below to compute the deterministic canonical hash and check
-          against live on-chain records in <code className="font-mono">InvoiceRegistry.sol</code>.
-        </p>
-
-        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 text-[12px]">
+        <div className="grid grid-cols-2 gap-2 text-xs">
           <div>
-            <label className="font-semibold text-[#475569]">Seller Global Tax ID / vLEI</label>
+            <label className="block text-[11px] font-medium text-slate-600 mb-1">
+              Seller LEI / Tax ID
+            </label>
             <input
               type="text"
               value={sellerId}
               onChange={(e) => setSellerId(e.target.value)}
-              placeholder="Enter Seller LEI / Tax ID"
-              className="mt-1 w-full rounded-lg border border-[#CBD5E1] bg-[#F8FAFC] px-3 py-2 font-mono text-[12px] text-[#0F172A]"
+              placeholder="Seller LEI"
+              className="h-9 w-full rounded-md border border-slate-300 px-2.5 font-mono text-xs text-slate-900 focus:border-slate-900 focus:outline-none"
             />
           </div>
+
           <div>
-            <label className="font-semibold text-[#475569]">Buyer Global Tax ID / vLEI</label>
+            <label className="block text-[11px] font-medium text-slate-600 mb-1">
+              Buyer LEI / Tax ID
+            </label>
             <input
               type="text"
               value={buyerId}
               onChange={(e) => setBuyerId(e.target.value)}
-              placeholder="Enter Buyer LEI / Tax ID"
-              className="mt-1 w-full rounded-lg border border-[#CBD5E1] bg-[#F8FAFC] px-3 py-2 font-mono text-[12px] text-[#0F172A]"
+              placeholder="Buyer LEI"
+              className="h-9 w-full rounded-md border border-slate-300 px-2.5 font-mono text-xs text-slate-900 focus:border-slate-900 focus:outline-none"
             />
           </div>
+
           <div>
-            <label className="font-semibold text-[#475569]">
-              Official Invoice Number
+            <label className="block text-[11px] font-medium text-slate-600 mb-1">
+              Invoice Number
             </label>
             <input
               type="text"
               value={invoiceNumber}
               onChange={(e) => setInvoiceNumber(e.target.value)}
-              placeholder="e.g. INV-2026-001"
-              className="mt-1 w-full rounded-lg border border-[#CBD5E1] bg-[#F8FAFC] px-3 py-2 font-mono text-[12px] text-[#0F172A]"
+              placeholder="INV-2026-001"
+              className="h-9 w-full rounded-md border border-slate-300 px-2.5 font-mono text-xs text-slate-900 focus:border-slate-900 focus:outline-none"
             />
           </div>
+
           <div>
-            <label className="font-semibold text-[#475569]">Issue Date (YYYY-MM-DD)</label>
+            <label className="block text-[11px] font-medium text-slate-600 mb-1">
+              Issue Date
+            </label>
             <input
               type="text"
               value={issueDate}
               onChange={(e) => setIssueDate(e.target.value)}
               placeholder="YYYY-MM-DD"
-              className="mt-1 w-full rounded-lg border border-[#CBD5E1] bg-[#F8FAFC] px-3 py-2 font-mono text-[12px] text-[#0F172A]"
+              className="h-9 w-full rounded-md border border-slate-300 px-2.5 font-mono text-xs text-slate-900 focus:border-slate-900 focus:outline-none"
             />
           </div>
+
           <div>
-            <label className="font-semibold text-[#475569]">ISO 4217 Currency</label>
+            <label className="block text-[11px] font-medium text-slate-600 mb-1">
+              Currency
+            </label>
             <input
               type="text"
               value={currencyCode}
               onChange={(e) => setCurrencyCode(e.target.value)}
               placeholder="USD"
-              className="mt-1 w-full rounded-lg border border-[#CBD5E1] bg-[#F8FAFC] px-3 py-2 font-mono text-[12px] text-[#0F172A]"
+              className="h-9 w-full rounded-md border border-slate-300 px-2.5 font-mono text-xs text-slate-900 focus:border-slate-900 focus:outline-none"
             />
           </div>
+
           <div>
-            <label className="font-semibold text-[#475569]">Face Value (USD)</label>
+            <label className="block text-[11px] font-medium text-slate-600 mb-1">
+              Face Value (USD)
+            </label>
             <input
               type="text"
               value={faceValueUsd}
               onChange={(e) => setFaceValueUsd(e.target.value)}
-              placeholder="e.g. 150000"
-              className="mt-1 w-full rounded-lg border border-[#CBD5E1] bg-[#F8FAFC] px-3 py-2 font-mono text-[12px] text-[#0F172A]"
+              placeholder="150000"
+              className="h-9 w-full rounded-md border border-slate-300 px-2.5 font-mono text-xs text-slate-900 focus:border-slate-900 focus:outline-none"
             />
           </div>
         </div>
 
         {simulationResult && (
           <div
-            className={`mt-5 rounded-xl border p-4 ${
+            className={`rounded-md border p-3 ${
               simulationResult.isDuplicate
-                ? 'border-[#FECACA] bg-[#FEF2F2]'
-                : 'border-[#A7F3D0] bg-[#ECFDF5]'
+                ? 'border-red-200 bg-red-50 text-red-900'
+                : 'border-emerald-200 bg-emerald-50 text-emerald-900'
             }`}
           >
             <div className="flex items-center justify-between gap-2">
-              <span className="text-[12px] font-bold uppercase tracking-[0.04em] text-[#0F172A]">
-                Deduplication Verdict:
-              </span>
-              <SemanticPill variant={simulationResult.isDuplicate ? 'red' : 'emerald'}>
+              <span className="text-[11px] font-semibold uppercase tracking-wider">
                 {simulationResult.isDuplicate
-                  ? 'BLOCKED: DUPLICATE INVOICE COLLISION'
-                  : 'CLEAR: UNIQUE CANONICAL FINGERPRINT ✓'}
-              </SemanticPill>
+                  ? 'Duplicate Hash Collision'
+                  : 'Unique Canonical Fingerprint'}
+              </span>
+              <span
+                className={`rounded px-1.5 py-0.2 font-mono text-[10px] font-medium ${
+                  simulationResult.isDuplicate
+                    ? 'bg-red-200 text-red-800'
+                    : 'bg-emerald-200 text-emerald-800'
+                }`}
+              >
+                {simulationResult.isDuplicate ? 'COLLISION' : 'CLEAR'}
+              </span>
             </div>
 
-            <div className="mt-2 font-mono text-[11px] text-[#334155]">
-              Normalized Tuple: {simulationResult.normalizedPayload.sellerId} |{' '}
-              {simulationResult.normalizedPayload.buyerId} |{' '}
-              {simulationResult.normalizedPayload.invoiceNumber} |{' '}
-              {simulationResult.normalizedPayload.currency} |{' '}
-              {simulationResult.normalizedPayload.issueDate} |{' '}
-              {simulationResult.normalizedPayload.faceValueMinorUnits}
-            </div>
-
-            <code className="mt-2 block break-all rounded border border-[#CBD5E1] bg-[#FFFFFF] p-2 font-mono text-[11px] text-[#0F172A]">
+            <code className="mt-2 block break-all rounded border border-slate-200 bg-white p-2 font-mono text-[11px] text-slate-900">
               {simulationResult.canonicalHash}
             </code>
 
@@ -220,61 +228,76 @@ export function RegistryWorkspaceView({ invoices }: RegistryWorkspaceViewProps) 
                 type="button"
                 disabled={isRegistering}
                 onClick={handleRegisterUniqueHashOnChain}
-                className="mt-3 w-full rounded-lg bg-[#0A2540] px-4 py-2.5 text-xs font-semibold text-white hover:bg-[#1E293B] disabled:opacity-50 cursor-pointer"
+                className="mt-2.5 w-full rounded-md bg-slate-900 py-2 text-xs font-medium text-white hover:bg-slate-800 disabled:opacity-50 transition cursor-pointer"
               >
                 {isRegistering
-                  ? 'Registering Hash in InvoiceRegistry.sol...'
-                  : 'Commit Unique Canonical Hash On-Chain (InvoiceRegistry.sol)'}
+                  ? 'Registering Hash on Base...'
+                  : 'Commit Hash to InvoiceRegistry.sol'}
               </button>
             )}
 
             {lastTxHash && (
-              <div className="mt-2 font-mono text-[11px] text-[#047857] break-all">
-                On-Chain Registry Tx: {lastTxHash}
+              <div className="mt-2 font-mono text-[11px] text-emerald-700 truncate">
+                Tx: {lastTxHash}
               </div>
             )}
           </div>
         )}
       </div>
 
-      {/* Right 6 Columns: Live On-Chain InvoiceRegistry.sol Ledger */}
-      <div className="rounded-xl border border-[#E2E8F0] bg-[#FFFFFF] p-6 shadow-xs lg:col-span-6">
-        <div className="flex items-center justify-between border-b border-[#E2E8F0] pb-4">
-          <div>
-            <span className="font-mono text-[11px] font-bold uppercase tracking-[0.05em] text-[#475569]">
-              Base (8453) • {protocolState?.contracts.INVOICE_REGISTRY?.slice(0, 12)}...
-            </span>
-            <h2 className="mt-0.5 text-[17px] font-bold text-[#0F172A]">
-              Live Registered Canonical Fingerprints
+      {/* Right 7 Columns: Live Registered Canonical Fingerprints */}
+      <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-none lg:col-span-7">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div className="flex items-center gap-2">
+            <h2 className="text-sm font-semibold text-slate-900">
+              Registered Fingerprints
             </h2>
+            <span className="rounded-full bg-slate-100 px-2 py-0.5 font-mono text-[11px] font-medium text-slate-600">
+              {invoices.length} Hashes
+            </span>
           </div>
-          <SemanticPill variant="emerald">{invoices.length} ON-CHAIN RECORDS</SemanticPill>
+          <span className="font-mono text-[11px] text-slate-400">
+            {protocolState?.contracts.INVOICE_REGISTRY
+              ? `${protocolState.contracts.INVOICE_REGISTRY.slice(0, 8)}...${protocolState.contracts.INVOICE_REGISTRY.slice(-6)}`
+              : 'Base L2'}
+          </span>
         </div>
 
-        <div className="mt-4 space-y-3">
+        <div className="mt-3 space-y-2 max-h-[500px] overflow-y-auto pr-1">
           {invoices.length === 0 ? (
-            <div className="rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] p-6 text-center text-xs text-[#64748B]">
-              No canonical hashes registered on-chain yet. Compute and commit a hash on the left.
+            <div className="py-8 text-center text-xs text-slate-500">
+              No fingerprints registered yet. Test a canonical hash on the left.
             </div>
           ) : (
             invoices.map((inv) => (
               <div
                 key={inv.id}
-                className="rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] p-3.5"
+                className="rounded-md border border-slate-200 bg-slate-50/60 p-2.5 text-xs transition hover:bg-slate-50"
               >
                 <div className="flex items-center justify-between">
-                  <span className="font-mono text-[13px] font-bold text-[#0F172A]">
-                    {inv.invoiceNumber} • ${inv.faceValueUsd.toLocaleString()}
+                  <span className="font-mono font-semibold text-slate-900">
+                    {inv.invoiceNumber}
                   </span>
-                  <SemanticPill variant={inv.status === 'FACTORED' ? 'blue' : 'emerald'}>
-                    {inv.status}
-                  </SemanticPill>
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono font-medium text-slate-900 tabular-nums">
+                      ${inv.faceValueUsd.toLocaleString()}
+                    </span>
+                    <span
+                      className={`rounded px-1.5 py-0.2 font-mono text-[10px] font-medium ${
+                        inv.status === 'FACTORED'
+                          ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                          : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                      }`}
+                    >
+                      {inv.status}
+                    </span>
+                  </div>
                 </div>
-                <div className="mt-1 text-[12px] text-[#334155]">
+                <div className="text-[11px] text-slate-500 mt-0.5">
                   {inv.sellerName} → {inv.buyerName}
                 </div>
-                <div className="mt-1.5 font-mono text-[11px] text-[#0F172A] break-all">
-                  Hash: {inv.canonicalHash}
+                <div className="mt-1 font-mono text-[10px] text-slate-600 break-all bg-white rounded border border-slate-200 px-2 py-1">
+                  {inv.canonicalHash}
                 </div>
               </div>
             ))
