@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import {
   useDiptosIdentity,
@@ -27,13 +27,39 @@ export function DiptosHeader() {
     setActiveRole,
     setIsAuthModalOpen,
     setIsFaucetModalOpen,
+    connectOrSwitchMetaMask,
   } = useDiptosIdentity();
+
+  const [isConnecting, setIsConnecting] = useState(false);
 
   const isWalletConnected = Boolean(
     isAuthenticated &&
       activeAddress &&
       (authIdentifier?.startsWith('MetaMask (') || authMethod !== 'browser-wallet')
   );
+
+  const handleWalletClick = async () => {
+    setIsConnecting(true);
+    try {
+      if (
+        typeof window !== 'undefined' &&
+        !(window as unknown as { ethereum?: unknown }).ethereum
+      ) {
+        setIsAuthModalOpen(true);
+        return;
+      }
+      await connectOrSwitchMetaMask();
+    } catch (err: unknown) {
+      const errCode = (err as { code?: string | number })?.code;
+      if (errCode === 'METAMASK_NOT_FOUND') {
+        setIsAuthModalOpen(true);
+      } else {
+        console.warn('MetaMask connect or switch account:', err);
+      }
+    } finally {
+      setIsConnecting(false);
+    }
+  };
 
   return (
     <header className="sticky top-0 z-30 h-14 bg-white border-b border-slate-200 px-4 lg:px-6">
@@ -100,16 +126,19 @@ export function DiptosHeader() {
           {/* 3. One unified Wallet & DID button */}
           <button
             type="button"
-            onClick={() => setIsAuthModalOpen(true)}
+            onClick={handleWalletClick}
+            disabled={isConnecting}
             className={`rounded-md px-3 py-1.5 text-xs font-mono font-medium transition cursor-pointer ${
               isWalletConnected && activeAddress
                 ? 'bg-slate-900 text-white hover:bg-slate-800'
                 : 'border border-slate-200 bg-white text-slate-900 hover:bg-slate-50'
             }`}
           >
-            {isWalletConnected && activeAddress ? (
+            {isConnecting ? (
+              <span>Connecting...</span>
+            ) : isWalletConnected && activeAddress ? (
               <span>
-                {activeAddress.slice(0, 6)}...{activeAddress.slice(-4)} • vLEI ✓
+                {activeAddress.slice(0, 6)}...{activeAddress.slice(-4)} • Switch Account
               </span>
             ) : (
               <span>Connect MetaMask</span>

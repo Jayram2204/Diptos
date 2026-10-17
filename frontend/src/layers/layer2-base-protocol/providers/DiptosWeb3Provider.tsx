@@ -481,6 +481,65 @@ function DynamicOnchainIdentityBridge({
     };
   }, [protocolState?.contracts.IDENTITY_REGISTRY, refreshProtocolState]);
 
+  // Automatically refresh the 4 top KPI strip metrics whenever a new block receipt arrives
+  useEffect(() => {
+    let isCancelled = false;
+    let lastBlockHex: string | null = null;
+    const eth = getInjectedEthereum();
+
+    const handleBlock = async () => {
+      if (!isCancelled) {
+        await refreshProtocolState();
+      }
+    };
+
+    try {
+      eth?.on?.('block', handleBlock);
+    } catch {
+      // Ignore if not supported
+    }
+
+    const interval = setInterval(async () => {
+      if (typeof window === 'undefined' || isCancelled) return;
+      try {
+        if (eth?.request) {
+          const currentBlock = (await eth.request({
+            method: 'eth_blockNumber',
+          })) as string;
+          if (
+            currentBlock &&
+            typeof currentBlock === 'string' &&
+            currentBlock !== lastBlockHex
+          ) {
+            lastBlockHex = currentBlock;
+            await refreshProtocolState();
+            return;
+          }
+        }
+      } catch {
+        // Fallback
+      }
+      await refreshProtocolState();
+    }, 6000);
+
+    return () => {
+      isCancelled = true;
+      clearInterval(interval);
+      try {
+        eth?.removeListener?.('block', handleBlock);
+      } catch {
+        // Ignore
+      }
+    };
+  }, [refreshProtocolState]);
+
+  // Trigger refresh whenever a new on-chain transaction receipt arrives
+  useEffect(() => {
+    if (lastTxReceipt?.hash) {
+      void refreshProtocolState();
+    }
+  }, [lastTxReceipt?.hash, refreshProtocolState]);
+
   const didPkh = useMemo(
     () => (activeAddress ? formatDidPkh(activeAddress, chainId) : null),
     [activeAddress, chainId]

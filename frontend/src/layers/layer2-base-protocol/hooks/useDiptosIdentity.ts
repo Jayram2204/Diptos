@@ -145,9 +145,9 @@ export function getEthereumChainAddParams(chainId: number) {
   if (chainId === 8453) {
     return {
       chainId: '0x2105',
-      chainName: 'Base',
+      chainName: 'Diptos Base Devnet (8453)',
       nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
-      rpcUrls: ['https://mainnet.base.org', 'http://127.0.0.1:8545'],
+      rpcUrls: [process.env.NEXT_PUBLIC_RPC_URL || 'http://127.0.0.1:8545', 'https://mainnet.base.org'],
       blockExplorerUrls: ['https://basescan.org'],
     };
   }
@@ -263,33 +263,28 @@ export async function executeMetaMaskConnectOrSwitch(params?: {
     throw err;
   }
 
-  // Step 2: Force MetaMask account selection popup window via wallet_requestPermissions
+  // Step 1: Force MetaMask account selection popup window via wallet_requestPermissions
   try {
     await eth.request({
       method: 'wallet_requestPermissions',
       params: [{ eth_accounts: {} }],
     });
-  } catch {
-    // If a permission request is already pending (-32002) or already granted, proceed to eth_requestAccounts
+  } catch (permErr: unknown) {
+    if ((permErr as { code?: number })?.code === 4001) {
+      throw permErr;
+    }
   }
 
-  let accounts: string[] = [];
-  try {
-    accounts = (await eth.request({
-      method: 'eth_requestAccounts',
-    })) as string[];
-  } catch {
-    accounts = ((await eth.request({
-      method: 'eth_accounts',
-    })) as string[]) ?? [];
-  }
+  const accounts = (await eth.request({
+    method: 'eth_requestAccounts',
+  })) as string[];
 
   const connectedAddress = accounts?.[0] as Address | undefined;
   if (!connectedAddress) {
     throw new Error('MetaMask returned no active accounts. Please unlock MetaMask and select an account.');
   }
 
-  // Step 3: Check active chain ID via eth_chainId and switch/add chain if needed
+  // Step 2: Check active chain ID via eth_chainId and switch/add chain if needed
   let parsedCurrentChainId = 84532;
   try {
     const rawChainHex = (await eth.request({
@@ -306,7 +301,7 @@ export async function executeMetaMaskConnectOrSwitch(params?: {
     // Fallback to Base Sepolia 84532
   }
 
-  const validTargetChains = [84532, 31337, 8453];
+  const validTargetChains = [84532, 31337];
   const desiredChainId =
     params?.targetChainId ??
     (validTargetChains.includes(parsedCurrentChainId) ? parsedCurrentChainId : 84532);
