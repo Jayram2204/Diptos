@@ -1,41 +1,83 @@
 import { parseAbi, type Address } from 'viem';
 
 export const DIPTOS_CONTRACT_ADDRESSES: Record<
-  'INVOICE_REGISTRY' | 'RWA_INVOICE_3643' | 'RWA_VAULT_4626' | 'SETTLEMENT_ESCROW' | 'IDENTITY_REGISTRY' | 'SLASHER',
+  | 'TEST_USDC'
+  | 'IDENTITY_REGISTRY'
+  | 'SLASHER'
+  | 'INVOICE_REGISTRY'
+  | 'RWA_INVOICE_3643'
+  | 'RWA_VAULT_4626'
+  | 'SETTLEMENT_ESCROW',
   Address
 > = {
-  INVOICE_REGISTRY: '0x1000000000000000000000000000000000003643',
-  RWA_INVOICE_3643: '0x2000000000000000000000000000000000003643',
-  RWA_VAULT_4626: '0x3000000000000000000000000000000000004626',
-  SETTLEMENT_ESCROW: '0x4000000000000000000000000000000000008453',
-  IDENTITY_REGISTRY: '0x5000000000000000000000000000000000000735',
-  SLASHER: '0x6000000000000000000000000000000000009999',
+  TEST_USDC: (process.env.NEXT_PUBLIC_TEST_USDC_ADDRESS ??
+    '0x5fbdb2315678afecb367f032d93f642f64180aa3') as Address,
+  IDENTITY_REGISTRY: (process.env.NEXT_PUBLIC_IDENTITY_REGISTRY_ADDRESS ??
+    '0xe7f1725e7734ce288f8367e1bb143e90bb3f0512') as Address,
+  SLASHER: (process.env.NEXT_PUBLIC_SLASHER_ADDRESS ??
+    '0x9fe46736679d2d9a65f0992f2272de9f3c7fa6e0') as Address,
+  INVOICE_REGISTRY: (process.env.NEXT_PUBLIC_INVOICE_REGISTRY_ADDRESS ??
+    '0xcf7ed3acca5a467e9e704c703e8d87f634fb0fc9') as Address,
+  RWA_INVOICE_3643: (process.env.NEXT_PUBLIC_RWA_INVOICE_3643_ADDRESS ??
+    '0xdc64a140aa3e981100a9beca4e685f962f0cf6c9') as Address,
+  RWA_VAULT_4626: (process.env.NEXT_PUBLIC_RWA_VAULT_4626_ADDRESS ??
+    '0x5fc8d32690cc91d4c39d9d3abcbd16989f875707') as Address,
+  SETTLEMENT_ESCROW: (process.env.NEXT_PUBLIC_SETTLEMENT_ESCROW_ADDRESS ??
+    '0x0165878a594ca255338adfa4d48449f69242eb8f') as Address,
 };
 
+export const TEST_USDC_ABI = parseAbi([
+  'function balanceOf(address owner) external view returns (uint256)',
+  'function totalSupply() external view returns (uint256)',
+  'function faucetMint(address to, uint256 amount) external',
+  'function approve(address spender, uint256 amount) external returns (bool)',
+  'function transfer(address to, uint256 amount) external returns (bool)',
+]);
+
 export const RWA_INVOICE_3643_ABI = parseAbi([
-  'function mintVerifiedInvoice(bytes32 canonicalHash, uint256 faceValue, bytes3 currency, uint64 dueDate, string buyerDID, bytes32 zkProofHash) external',
+  'function mintVerifiedInvoice(bytes32 canonicalHash, uint256 faceValue, bytes3 currency, uint64 dueDate, string buyerDid, bytes32 zkProofHash) external',
   'function transfer(bytes32 canonicalHash, address to) external',
   'function burnOnSettlement(bytes32 canonicalHash) external',
   'function freezeInvoice(bytes32 canonicalHash) external',
+  'function holderOf(bytes32 canonicalHash) external view returns (address)',
 ]);
 
 export const INVOICE_REGISTRY_ABI = parseAbi([
-  'function registerInvoice(bytes32 canonicalHash, bytes32 easAcceptanceUID, bytes32 zkProofHash, address buyer, uint256 faceValueMinorUnits, uint64 dueDate) external',
+  'struct RegisterInvoiceParams { bytes32 canonicalHash; string invoiceNumber; string corridor; string eInvoiceStandard; string governmentClearanceRef; string sellerName; string sellerLei; string buyerName; string buyerLei; string buyerRating; address buyer; string currency; uint256 faceValueMinorUnits; uint256 discountRateAprBps; uint256 tenorDays; string issueDate; string dueDate; uint64 dueDateUnix; bytes32 easOriginationUid; bytes32 easAcceptanceUid; bytes32 zkProofHash; uint256 cbamEmissionsKgCo2e; string cbamStandard; string virtualIbanAccount; }',
+  'struct InvoiceRecord { bytes32 canonicalHash; string invoiceNumber; string corridor; string eInvoiceStandard; string governmentClearanceRef; string sellerName; string sellerLei; address supplier; string buyerName; string buyerLei; string buyerRating; address buyer; string currency; uint256 faceValueMinorUnits; uint256 discountRateAprBps; uint256 tenorDays; string issueDate; string dueDate; uint64 dueDateUnix; bytes32 easOriginationUid; bytes32 easAcceptanceUid; bytes32 zkProofHash; uint256 cbamEmissionsKgCo2e; string cbamStandard; string virtualIbanAccount; uint8 status; }',
+  'function registerInvoiceFull(RegisterInvoiceParams params) external',
+  'function updateStatus(bytes32 canonicalHash, uint8 newStatus) external',
+  'function getAllInvoices() external view returns (InvoiceRecord[])',
+  'function getInvoiceCount() external view returns (uint256)',
 ]);
 
 export const SETTLEMENT_ESCROW_ABI = parseAbi([
   'function fundInvoiceDvP(bytes32 canonicalHash, address supplier, uint256 discountedPurchaseAmount, uint256 maturityFaceValue) external',
   'function settleOnChainStablecoin(bytes32 canonicalHash, uint256 repaymentAmount) external',
-  'function confirmFiatVirtualIBANSettlement(bytes32 canonicalHash, bytes oracleSig) external',
+  'function confirmFiatVirtualIbanSettlement(bytes32 canonicalHash, bytes oracleSig) external',
 ]);
 
 export const RWA_VAULT_4626_ABI = parseAbi([
   'function depositSenior(uint256 assets) external',
   'function depositJunior(uint256 assets) external',
   'function allocateToInvoice(bytes32 canonicalHash, uint256 fundedAmount) external',
+  'function getVaultMetrics() external view returns (uint256 seniorPoolAssets, uint256 juniorFirstLossAssets, uint256 seniorTargetApyBps, uint256 juniorTargetApyBps, uint256 activeAllocatedInvoices)',
+]);
+
+export const IDENTITY_REGISTRY_ABI = parseAbi([
+  'struct CorporateIdentityRecord { address wallet; address onchainIdContract; string vlei; string legalName; string jurisdiction; string qviIssuer; bool verified; uint64 registeredAt; }',
+  'struct VerifiableCredentialRecord { string vcId; string vcType; string issuerDid; string issuerName; address subjectAddress; string subjectDid; string claimSummary; bool revoked; uint64 issuedAt; }',
+  'function registerIdentity(address _user, address _onchainId, string _vlei, string _legalName, string _jurisdiction, string _qviIssuer) external',
+  'function issueCredential(string _vcId, string _vcType, string _issuerDid, string _issuerName, address _subjectAddress, string _subjectDid, string _claimSummary) external',
+  'function isVerified(address _user) external view returns (bool)',
+  'function getIdentity(address _user) external view returns (CorporateIdentityRecord)',
+  'function getAllIdentities() external view returns (CorporateIdentityRecord[])',
+  'function getAllCredentials() external view returns (VerifiableCredentialRecord[])',
 ]);
 
 export const SLASHER_ABI = parseAbi([
-  'function postVerifierBond(uint256 amount) external',
+  'struct VerifierNodeRecord { address nodeAddress; string operatorName; string role; uint256 stakedBondUsd; uint256 invoicesVerifiedCount; uint256 slashEventsCount; bool slashed; }',
+  'function postVerifierBond(string operatorName, string role, uint256 amount) external',
   'function submitDuplicateProof(bytes32 canonicalHash, bytes duplicateEvidence) external',
+  'function getAllVerifierNodes() external view returns (VerifierNodeRecord[])',
 ]);

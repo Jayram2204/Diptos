@@ -1,10 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import {
-  INITIAL_DIPTOS_INVOICES,
-  type RWAInvoiceRecord,
-} from '@/layers/layer1-rwa-core';
+import type { RWAInvoiceRecord } from '@/layers/layer1-rwa-core';
 import {
   useDiptosIdentity,
   type DiptosWorkspaceRole,
@@ -22,8 +19,12 @@ export interface AppWorkspaceShellProps {
 }
 
 export function AppWorkspaceShell({ forcedInitialRole }: AppWorkspaceShellProps) {
-  const { activeRole, setActiveRole } = useDiptosIdentity();
-  const [invoices, setInvoices] = useState<RWAInvoiceRecord[]>(INITIAL_DIPTOS_INVOICES);
+  const {
+    activeRole,
+    setActiveRole,
+    protocolState,
+    refreshProtocolState,
+  } = useDiptosIdentity();
   const [auditInvoice, setAuditInvoice] = useState<RWAInvoiceRecord | null>(null);
 
   useEffect(() => {
@@ -32,13 +33,7 @@ export function AppWorkspaceShell({ forcedInitialRole }: AppWorkspaceShellProps)
     }
   }, [forcedInitialRole, setActiveRole]);
 
-  const handleMarkInvoiceFactored = (invoiceId: string) => {
-    setInvoices((prev) =>
-      prev.map((inv) =>
-        inv.id === invoiceId ? { ...inv, status: 'FACTORED' } : inv
-      )
-    );
-  };
+  const liveInvoices = protocolState?.invoices ?? [];
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-[#0F172A]">
@@ -49,22 +44,22 @@ export function AppWorkspaceShell({ forcedInitialRole }: AppWorkspaceShellProps)
 
         {activeRole === 'supplier' && (
           <SupplierWorkspaceView
-            invoices={invoices}
-            onAccelerateInvoice={(id) => handleMarkInvoiceFactored(id)}
+            invoices={liveInvoices}
+            onAccelerateInvoice={() => refreshProtocolState()}
             onInspectAudit={(inv) => setAuditInvoice(inv)}
           />
         )}
 
         {activeRole === 'financier' && (
           <FinancierWorkspaceView
-            invoices={invoices}
-            onFundInvoice={(id) => handleMarkInvoiceFactored(id)}
+            invoices={liveInvoices}
+            onFundInvoice={() => refreshProtocolState()}
             onInspectAudit={(inv) => setAuditInvoice(inv)}
           />
         )}
 
         {activeRole === 'registry' && (
-          <RegistryWorkspaceView invoices={invoices} />
+          <RegistryWorkspaceView invoices={liveInvoices} />
         )}
 
         {activeRole === 'security' && <SecurityWorkspaceView />}

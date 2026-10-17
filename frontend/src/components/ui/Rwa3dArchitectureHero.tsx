@@ -2,7 +2,6 @@
 
 import React, { useState } from 'react';
 import { useDiptosIdentity } from '@/hooks/useDiptosIdentity';
-import { DIPTOS_TRANCHE_VAULTS } from '@/layers/layer1-rwa-core';
 import { SemanticPill } from './SemanticPill';
 
 const ARCHITECTURE_LAYERS = [
@@ -10,12 +9,17 @@ const ARCHITECTURE_LAYERS = [
     number: 'LAYER 01',
     title: 'RWA Core Engine',
     subtitle: 'Asset Origination, Deduplication & Liquidity Packaging',
-    standards: ['ERC-3643 (T-REX)', 'ERC-4626 Vaults', 'Peppol BIS 3.0', 'MonetaGo Bridge', 'UNCITRAL MLETR'],
+    standards: [
+      'ERC-3643 (T-REX)',
+      'ERC-4626 Vaults',
+      'Peppol BIS 3.0',
+      'MonetaGo Bridge',
+      'UNCITRAL MLETR',
+    ],
     metricLabel: 'Canonical Hash Collisions Blocked',
     metricValue: '100% Deterministic',
     accentBorder: 'border-[#047857]',
     badgeVariant: 'emerald' as const,
-    zOffset: 'translate-z-12',
     description:
       'Normalizes 6 immutable invoice fields into a canonical keccak256 fingerprint, verifies NIC GSTN / Peppol / SAT CFDI tax signatures, and mints bankruptcy-remote True Sale notes.',
   },
@@ -23,12 +27,17 @@ const ARCHITECTURE_LAYERS = [
     number: 'LAYER 02',
     title: 'Base L2 Protocol Engine',
     subtitle: 'Sub-Cent Execution, EAS Attestations & Atomic DvP Settlement',
-    standards: ['Base L2 (8453)', 'ERC-4337 Paymaster', 'EAS Schemas #1–#3', 'USDC / EURC', 'Virtual IBAN Oracle'],
+    standards: [
+      'Base L2 (8453)',
+      'ERC-4337 Paymaster',
+      'EAS Schemas #1–#3',
+      'USDC / EURC',
+      'Virtual IBAN Oracle',
+    ],
     metricLabel: 'Lifecycle Execution Cost',
     metricValue: '< $0.01 (Gas Sponsored)',
     accentBorder: 'border-[#1D4ED8]',
     badgeVariant: 'blue' as const,
-    zOffset: 'translate-z-6',
     description:
       'Anchors Supplier Origination and Buyer Acceptance on Base via Ethereum Attestation Service (EAS), abstracts private keys via Privy ERC-4337 Smart Wallets, and settles atomically.',
   },
@@ -36,36 +45,62 @@ const ARCHITECTURE_LAYERS = [
     number: 'LAYER 03',
     title: 'DI & ZK Privacy Shield',
     subtitle: 'Institutional KYB/vLEI, ONCHAINID & Zero-Knowledge Masking',
-    standards: ['GLEIF vLEI', 'ONCHAINID (ERC-734/735)', 'W3C VC 2.0', 'Privado ID ZK', 'EU CBAM ISO-14064'],
+    standards: [
+      'GLEIF vLEI',
+      'ONCHAINID (ERC-734/735)',
+      'W3C VC 2.0',
+      'Privado ID ZK',
+      'EU CBAM ISO-14064',
+    ],
     metricLabel: 'Unit Price & Margin Exposure',
     metricValue: '0 Bytes Public [ZK-MASKED]',
     accentBorder: 'border-[#0F172A]',
     badgeVariant: 'zk-masked' as const,
-    zOffset: 'translate-z-0',
     description:
       'Binds corporate participants to 20-char GLEIF vLEIs and ONCHAINID contracts while using Privado ID Groth16 ZK proofs to verify Tier-1 and EU CBAM compliance privately.',
   },
 ];
 
 export function Rwa3dArchitectureHero() {
-  const { setActiveRole } = useDiptosIdentity();
+  const { setActiveRole, protocolState, setIsFaucetModalOpen } = useDiptosIdentity();
   const [rightPanelMode, setRightPanelMode] = useState<'3d-stack' | 'maple-returns'>('3d-stack');
   const [activeLayerIndex, setActiveLayerIndex] = useState<number>(0);
   const [selectedTrancheIndex, setSelectedTrancheIndex] = useState<0 | 1>(0);
 
-  const selectedTranche = DIPTOS_TRANCHE_VAULTS[selectedTrancheIndex];
+  const liveVaults = protocolState?.vaults ?? [];
+  const liveInvoices = protocolState?.invoices ?? [];
+  const liveNodes = protocolState?.verifierNodes ?? [];
+
+  const seniorVault = liveVaults[0];
+  const juniorVault = liveVaults[1];
+  const selectedTranche = liveVaults[selectedTrancheIndex] ?? seniorVault;
+
+  const totalTvlUsd = liveVaults.reduce((sum, v) => sum + v.tvlUsd, 0);
+  const totalInvoicesUsd = liveInvoices.reduce((sum, inv) => sum + inv.faceValueUsd, 0);
+  const totalSlasherBondsUsd = liveNodes.reduce((sum, n) => sum + n.stakedBondUsd, 0);
+
+  const overcollatPercent =
+    seniorVault?.collateralizationRatioPercent ?? 100.0;
+  const seniorApy = seniorVault?.targetApyPercent ?? 8.85;
+  const juniorApy = juniorVault?.targetApyPercent ?? 14.2;
+
+  const activeApy = selectedTranche?.targetApyPercent ?? 8.85;
+  const projected12mValue = Math.round(1_000_000 * (1 + activeApy / 100));
+  const monthlyRate = (activeApy / 12).toFixed(2);
 
   return (
     <section
       aria-label="Diptos Institutional RWA Overview and 3D Architecture"
       className="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-12"
     >
-      {/* Left Card: Maple Institutional-Inspired Executive Summary */}
+      {/* Left Card: Maple Institutional-Inspired Live On-Chain Summary */}
       <div className="flex flex-col justify-between rounded-xl border border-[#E2E8F0] bg-[#FFFFFF] p-6 shadow-[0_1px_3px_rgba(15,23,42,0.03)] lg:col-span-5">
         <div>
           <div className="mb-3 flex flex-wrap items-center gap-2">
-            <SemanticPill variant="emerald">MLETR & UCC ART. 12 TRUE SALE</SemanticPill>
-            <SemanticPill variant="blue">BASE MAINNET (8453)</SemanticPill>
+            <SemanticPill variant="emerald">MLETR &amp; UCC ART. 12 TRUE SALE</SemanticPill>
+            <SemanticPill variant="blue">
+              BASE (8453) • BLOCK #{protocolState?.blockNumber ?? 'LIVE'}
+            </SemanticPill>
           </div>
 
           <h1 className="font-serif text-[28px] font-semibold tracking-[-0.02em] text-[#0F172A] sm:text-[32px] leading-[1.18]">
@@ -76,21 +111,21 @@ export function Rwa3dArchitectureHero() {
           <p className="mt-3 text-[14px] leading-[1.6] text-[#334155]">
             Short-duration (30–90 day), self-liquidating B2B trade invoices backed by cryptographic
             Buyer Acceptance (<span className="font-mono text-[12px] font-medium text-[#0F172A]">EAS</span>),
-            cross-registry deduplication (<span className="font-mono text-[12px] font-medium text-[#0F172A]">MonetaGo</span>),
-            and zero-knowledge corporate identity (<span className="font-mono text-[12px] font-medium text-[#0F172A]">GLEIF vLEI + Privado ID</span>).
+            cross-registry deduplication (<span className="font-mono text-[12px] font-medium text-[#0F172A]">InvoiceRegistry.sol</span>),
+            and zero-knowledge corporate identity (<span className="font-mono text-[12px] font-medium text-[#0F172A]">IdentityRegistry.sol</span>).
           </p>
 
-          {/* 4-Metric Institutional Grid modeled after Maple Institutional */}
+          {/* 4-Metric Institutional Grid reading 100% live from on-chain state */}
           <div className="mt-6 grid grid-cols-2 gap-y-5 gap-x-6 border-y border-[#E2E8F0] py-5">
             <div>
               <div className="text-[11px] font-semibold uppercase tracking-[0.05em] text-[#64748B]">
-                Active Pool AUM
+                Live On-Chain Vault TVL
               </div>
-              <div className="mt-1 font-mono text-[28px] font-semibold tracking-tight text-[#0F172A] tabular-nums">
-                $53.3M
+              <div className="mt-1 font-mono text-[26px] font-semibold tracking-tight text-[#0F172A] tabular-nums">
+                ${totalTvlUsd.toLocaleString('en-US')}
               </div>
               <div className="mt-0.5 font-mono text-[11px] text-[#64748B] tabular-nums">
-                684 Verified Invoices
+                {liveInvoices.length} On-Chain Invoices (${totalInvoicesUsd.toLocaleString('en-US')})
               </div>
             </div>
 
@@ -98,11 +133,11 @@ export function Rwa3dArchitectureHero() {
               <div className="text-[11px] font-semibold uppercase tracking-[0.05em] text-[#64748B]">
                 Overcollateralization
               </div>
-              <div className="mt-1 font-mono text-[28px] font-semibold tracking-tight text-[#0F172A] tabular-nums">
-                124.5%
+              <div className="mt-1 font-mono text-[26px] font-semibold tracking-tight text-[#0F172A] tabular-nums">
+                {overcollatPercent.toFixed(1)}%
               </div>
               <div className="mt-0.5 font-mono text-[11px] text-[#047857] tabular-nums">
-                20% Junior First-Loss + Slasher Bond
+                +${totalSlasherBondsUsd.toLocaleString('en-US')} Slasher Bonds
               </div>
             </div>
 
@@ -110,8 +145,8 @@ export function Rwa3dArchitectureHero() {
               <div className="text-[11px] font-semibold uppercase tracking-[0.05em] text-[#64748B]">
                 Real-Economy Net APY
               </div>
-              <div className="mt-1 font-mono text-[28px] font-semibold tracking-tight text-[#047857] tabular-nums">
-                8.85%–14.2%
+              <div className="mt-1 font-mono text-[26px] font-semibold tracking-tight text-[#047857] tabular-nums">
+                {seniorApy.toFixed(2)}%–{juniorApy.toFixed(1)}%
               </div>
               <div className="mt-0.5 font-mono text-[11px] text-[#64748B] tabular-nums">
                 Senior DROP / Junior TIN
@@ -124,7 +159,7 @@ export function Rwa3dArchitectureHero() {
               </div>
               <div className="mt-2 flex flex-wrap items-center gap-1.5">
                 <span className="inline-flex h-7 items-center rounded-full border border-[#CBD5E1] bg-[#F8FAFC] px-2.5 font-mono text-[11px] font-semibold text-[#0F172A]">
-                  USDC
+                  dUSDC
                 </span>
                 <span className="inline-flex h-7 items-center rounded-full border border-[#CBD5E1] bg-[#F8FAFC] px-2.5 font-mono text-[11px] font-semibold text-[#0F172A]">
                   EURC
@@ -154,24 +189,31 @@ export function Rwa3dArchitectureHero() {
             onClick={() => setActiveRole('supplier')}
             className="flex-1 rounded-lg border border-[#CBD5E1] bg-[#F8FAFC] px-4 py-3 text-center text-[13px] font-semibold text-[#0F172A] transition hover:bg-[#F1F5F9] cursor-pointer"
           >
-            Accelerate Receivables (24h Cash)
+            Originate / Factor Invoice
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsFaucetModalOpen(true)}
+            className="rounded-lg border border-emerald-300 bg-emerald-50 px-3.5 py-3 text-center font-mono text-[12px] font-semibold text-[#047857] transition hover:bg-emerald-100 cursor-pointer"
+          >
+            Faucet
           </button>
         </div>
       </div>
 
-      {/* Right Card: Interactive 3D RWA Three-Layer Visualizer + Maple Returns & Performance */}
+      {/* Right Card: Interactive 3D RWA Three-Layer Visualizer + Live Tranche Returns */}
       <div className="rounded-xl border border-[#E2E8F0] bg-[#FFFFFF] p-6 shadow-[0_1px_3px_rgba(15,23,42,0.03)] lg:col-span-7">
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3 border-b border-[#E2E8F0] pb-4">
           <div>
             <h2 className="font-serif text-[20px] font-semibold tracking-[-0.02em] text-[#0F172A]">
               {rightPanelMode === '3d-stack'
                 ? 'Interactive 3D Three-Layer RWA Architecture'
-                : 'Institutional Returns & Tranche Performance'}
+                : 'Live On-Chain Vault Returns & Tranche Telemetry'}
             </h2>
             <p className="text-[12px] text-[#64748B]">
               {rightPanelMode === '3d-stack'
                 ? 'Inspect how each invoice traverses Origination, Base L2 Execution, and Zero-Knowledge DI.'
-                : 'Historical compounding and monthly realized yield across Senior DROP and Junior TIN vaults.'}
+                : 'Real-time compounding metrics read directly from RWAVault4626.sol on Base.'}
             </p>
           </div>
 
@@ -206,7 +248,6 @@ export function Rwa3dArchitectureHero() {
             {/* 3D Isometric Interactive Stack */}
             <div className="md:col-span-7">
               <div className="relative rounded-xl border border-[#E2E8F0] bg-gradient-to-b from-[#F8FAFC] to-[#F1F5F9] p-5 overflow-hidden">
-                {/* Architectural Grid Background */}
                 <div
                   aria-hidden="true"
                   className="pointer-events-none absolute inset-0 opacity-45"
@@ -284,10 +325,15 @@ export function Rwa3dArchitectureHero() {
 
                 <div className="mt-4 rounded-lg border border-[#E2E8F0] bg-[#FFFFFF] p-3">
                   <div className="text-[11px] font-semibold uppercase tracking-[0.05em] text-[#64748B]">
-                    {ARCHITECTURE_LAYERS[activeLayerIndex].metricLabel}
+                    Live Contract Address on Base
                   </div>
-                  <div className="mt-1 font-mono text-[15px] font-bold text-[#0F172A] tabular-nums">
-                    {ARCHITECTURE_LAYERS[activeLayerIndex].metricValue}
+                  <div className="mt-1 font-mono text-[11px] font-bold text-[#0284C7] break-all">
+                    {activeLayerIndex === 0 &&
+                      (protocolState?.contracts.INVOICE_REGISTRY ?? 'Deploying...')}
+                    {activeLayerIndex === 1 &&
+                      (protocolState?.contracts.SETTLEMENT_ESCROW ?? 'Deploying...')}
+                    {activeLayerIndex === 2 &&
+                      (protocolState?.contracts.IDENTITY_REGISTRY ?? 'Deploying...')}
                   </div>
                 </div>
               </div>
@@ -305,17 +351,16 @@ export function Rwa3dArchitectureHero() {
             </div>
           </div>
         ) : (
-          /* Maple Institutional-Style Returns & Monthly Performance View */
+          /* Live On-Chain Vault Returns & Performance View */
           <div className="grid grid-cols-1 gap-5 md:grid-cols-12">
-            {/* Growth of $1M Chart Card */}
             <div className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-4 md:col-span-7 flex flex-col justify-between">
               <div className="flex items-center justify-between gap-2">
                 <div>
                   <div className="text-[12px] font-medium text-[#64748B]">
-                    Growth of $1,000,000 deposited (12M)
+                    12M Projected Compounding of $1,000,000
                   </div>
                   <div className="mt-1 font-mono text-[26px] font-bold text-[#0F172A] tabular-nums">
-                    {selectedTranche.id === 'SENIOR_DROP' ? '$1,088,500' : '$1,142,000'}
+                    ${projected12mValue.toLocaleString('en-US')}
                   </div>
                 </div>
                 <div className="inline-flex rounded-md border border-[#E2E8F0] bg-[#FFFFFF] p-0.5">
@@ -328,7 +373,7 @@ export function Rwa3dArchitectureHero() {
                         : 'text-[#475569]'
                     }`}
                   >
-                    Senior DROP (8.85%)
+                    Senior DROP ({seniorApy.toFixed(2)}%)
                   </button>
                   <button
                     type="button"
@@ -339,12 +384,11 @@ export function Rwa3dArchitectureHero() {
                         : 'text-[#475569]'
                     }`}
                   >
-                    Junior TIN (14.2%)
+                    Junior TIN ({juniorApy.toFixed(2)}%)
                   </button>
                 </div>
               </div>
 
-              {/* Clean SVG Compounding Curve */}
               <div className="my-4">
                 <svg
                   viewBox="0 0 360 130"
@@ -372,46 +416,52 @@ export function Rwa3dArchitectureHero() {
                     strokeWidth="2.5"
                   />
                 </svg>
-                <div className="flex justify-between font-mono text-[10px] text-[#64748B] tabular-nums">
-                  <span>Oct 25 ($1.00M)</span>
-                  <span>Feb 26</span>
-                  <span>Jun 26</span>
-                  <span>Oct 26 ({selectedTranche.id === 'SENIOR_DROP' ? '$1.088M' : '$1.142M'})</span>
-                </div>
               </div>
 
               <div className="flex items-center justify-between border-t border-[#E2E8F0] pt-2.5 text-[11px] text-[#475569]">
-                <span>Zero correlation to crypto token volatility</span>
+                <span>Vault Contract: {selectedTranche?.erc4626VaultAddress?.slice(0, 10)}...</span>
                 <span className="font-mono font-semibold text-[#047857] tabular-nums">
-                  0.00% Historical Default
+                  +{monthlyRate}% / Month Realized
                 </span>
               </div>
             </div>
 
-            {/* Monthly Performance Matrix */}
             <div className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-4 md:col-span-5 flex flex-col justify-between">
-              <div>
+              <div className="space-y-2.5">
                 <div className="flex items-center justify-between">
                   <span className="text-[13px] font-semibold text-[#0F172A]">
-                    Monthly Performance (2026)
+                    Live Vault Telemetry
                   </span>
                   <span className="rounded bg-[#FFFFFF] border border-[#E2E8F0] px-2 py-0.5 font-mono text-[11px] font-semibold text-[#0F172A]">
-                    {selectedTranche.symbol}
+                    {selectedTranche?.symbol ?? 'dRWA-DROP'}
                   </span>
                 </div>
 
-                <div className="mt-3 grid grid-cols-2 gap-2">
-                  {selectedTranche.monthlyPerformance2026.map((item) => (
-                    <div
-                      key={item.month}
-                      className="flex items-center justify-between rounded-md border border-[#E2E8F0] bg-[#FFFFFF] px-2.5 py-1.5"
-                    >
-                      <span className="text-[11px] text-[#64748B]">{item.month}</span>
-                      <span className="font-mono text-[12px] font-semibold text-[#0F172A] tabular-nums">
-                        {item.returnPercent}
-                      </span>
-                    </div>
-                  ))}
+                <div className="rounded-lg border border-[#E2E8F0] bg-white p-3 space-y-2 text-xs">
+                  <div className="flex justify-between">
+                    <span className="text-[#64748B]">On-Chain TVL</span>
+                    <span className="font-mono font-bold text-[#0F172A] tabular-nums">
+                      ${(selectedTranche?.tvlUsd ?? 0).toLocaleString('en-US')}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-[#64748B]">Collateralization</span>
+                    <span className="font-mono font-bold text-[#047857] tabular-nums">
+                      {(selectedTranche?.collateralizationRatioPercent ?? 100).toFixed(1)}%
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-[#64748B]">Weighted Avg Tenor</span>
+                    <span className="font-mono font-bold text-[#0F172A] tabular-nums">
+                      {selectedTranche?.weightedAvgTenorDays ?? 0} Days
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-[#64748B]">Allocated Invoices</span>
+                    <span className="font-mono font-bold text-[#0F172A] tabular-nums">
+                      {selectedTranche?.activeInvoicesCount ?? liveInvoices.length}
+                    </span>
+                  </div>
                 </div>
               </div>
 
@@ -420,7 +470,7 @@ export function Rwa3dArchitectureHero() {
                   Annualized Net APY
                 </span>
                 <span className="font-mono text-[14px] font-bold text-[#047857] tabular-nums">
-                  {selectedTranche.targetApyPercent.toFixed(2)}%
+                  {activeApy.toFixed(2)}%
                 </span>
               </div>
             </div>

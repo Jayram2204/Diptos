@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
+import { Droplets, KeyRound } from 'lucide-react';
 import {
   useDiptosIdentity,
   type DiptosWorkspaceRole,
@@ -53,6 +55,9 @@ export function DiptosHeader() {
     setWalletExecutionMode,
     chainId,
     setChainId,
+    protocolState,
+    setIsAuthModalOpen,
+    setIsFaucetModalOpen,
     login,
     logout,
   } = useDiptosIdentity();
@@ -64,17 +69,30 @@ export function DiptosHeader() {
       <div className="mx-auto flex max-w-[1440px] flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">
         {/* Left: Institutional Brand Identity & Chain Pill */}
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#0A2540] font-mono text-[14px] font-bold text-[#FFFFFF]">
+          <Link
+            href="/"
+            className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#0A2540] font-mono text-[14px] font-bold text-[#FFFFFF] hover:bg-[#1E293B] transition"
+            title="Return to Diptos 3D RWA Landing Page"
+          >
             D
-          </div>
+          </Link>
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-[16px] font-bold tracking-[-0.02em] text-[#0F172A]">
+              <Link
+                href="/"
+                className="text-[16px] font-bold tracking-[-0.02em] text-[#0F172A] hover:text-[#0284C7] transition"
+              >
                 DIPTOS
-              </span>
+              </Link>
               <span className="rounded border border-[#E2E8F0] bg-[#F8FAFC] px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.05em] text-[#475569]">
                 diptos.xyz • v2.0
               </span>
+              <Link
+                href="/"
+                className="hidden sm:inline-flex items-center rounded border border-[#CBD5E1] bg-white px-2 py-0.5 text-[10px] font-semibold text-[#0A2540] hover:bg-[#F8FAFC]"
+              >
+                3D Overview
+              </Link>
             </div>
             <p className="text-[11px] text-[#64748B]">
               Global RWA Trade Receivables Protocol
@@ -116,8 +134,35 @@ export function DiptosHeader() {
           })}
         </nav>
 
-        {/* Right: ERC-4337 Paymaster Badge + Verified vLEI & ONCHAINID Pill */}
+        {/* Right: Faucet + Multi-Auth + ERC-4337 Paymaster Badge + Verified vLEI Pill */}
         <div className="order-2 flex items-center gap-2 lg:order-3">
+          {/* Live Base / ETH Faucet Button */}
+          <button
+            type="button"
+            onClick={() => setIsFaucetModalOpen(true)}
+            title="Open Base & ETH On-Chain Faucet (Mint ETH + dUSDC)"
+            className="inline-flex items-center gap-1.5 rounded-md border border-emerald-200 bg-emerald-50/90 px-2.5 py-1.5 font-mono text-[11px] font-semibold text-[#059669] hover:bg-emerald-100 cursor-pointer tabular-nums"
+          >
+            <Droplets className="h-3.5 w-3.5" />
+            <span>
+              Faucet
+              {protocolState?.connectedWalletBalances?.usdcBalance
+                ? ` (${protocolState.connectedWalletBalances.usdcBalance} dUSDC)`
+                : ''}
+            </span>
+          </button>
+
+          {/* Multi-Method Auth & .env Wallet Switcher */}
+          <button
+            type="button"
+            onClick={() => setIsAuthModalOpen(true)}
+            title="Switch between .env Base/ETH Wallets, Email OTP, SMS OTP, WebAuthn Passkey, or MetaMask"
+            className="hidden md:inline-flex items-center gap-1.5 rounded-md border border-[#CBD5E1] bg-white px-2.5 py-1.5 text-[11px] font-semibold text-[#0A2540] hover:bg-[#F8FAFC] cursor-pointer"
+          >
+            <KeyRound className="h-3.5 w-3.5 text-[#0284C7]" />
+            <span>Auth / Wallets</span>
+          </button>
+
           {/* Chain Selector: Base (8453) vs Base Sepolia (84532) */}
           <button
             type="button"
@@ -173,7 +218,7 @@ export function DiptosHeader() {
               </button>
 
               {identityDrawerOpen && (
-                <div className="absolute right-0 mt-2 w-[360px] rounded-xl border border-[#CBD5E1] bg-[#FFFFFF] p-4 shadow-xl z-50">
+                <div className="absolute right-0 mt-2 w-[380px] rounded-xl border border-[#CBD5E1] bg-[#FFFFFF] p-4 shadow-xl z-50">
                   <div className="flex items-center justify-between border-b border-[#E2E8F0] pb-2.5">
                     <span className="text-[12px] font-bold uppercase tracking-[0.04em] text-[#0F172A]">
                       Corporate Identity &amp; Smart Account
@@ -193,6 +238,20 @@ export function DiptosHeader() {
                         LEI: {vleiProfile?.lei}
                       </dd>
                     </div>
+
+                    {protocolState?.connectedWalletBalances && (
+                      <div className="rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] p-2.5">
+                        <dt className="text-[10px] font-bold uppercase tracking-wider text-[#475569]">
+                          Live On-Chain Balances (Base 8453)
+                        </dt>
+                        <dd className="mt-1 flex items-center justify-between font-mono text-xs font-bold text-[#0F172A] tabular-nums">
+                          <span className="text-[#059669]">
+                            {protocolState.connectedWalletBalances.usdcBalance} dUSDC
+                          </span>
+                          <span>{protocolState.connectedWalletBalances.ethBalance} ETH</span>
+                        </dd>
+                      </div>
+                    )}
 
                     <div>
                       <dt className="text-[11px] font-semibold text-[#64748B]">
@@ -231,14 +290,26 @@ export function DiptosHeader() {
                     </div>
                   </dl>
 
-                  <div className="mt-4 flex items-center justify-between gap-2 border-t border-[#E2E8F0] pt-3">
-                    <button
-                      type="button"
-                      onClick={() => setIdentityDrawerOpen(false)}
-                      className="rounded-md border border-[#CBD5E1] px-3 py-1.5 text-[12px] font-semibold text-[#334155] hover:bg-[#F8FAFC] cursor-pointer"
-                    >
-                      Close
-                    </button>
+                  <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-[#E2E8F0] pt-3">
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setIdentityDrawerOpen(false)}
+                        className="rounded-md border border-[#CBD5E1] px-2.5 py-1.5 text-[11px] font-semibold text-[#334155] hover:bg-[#F8FAFC] cursor-pointer"
+                      >
+                        Close
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIdentityDrawerOpen(false);
+                          setIsAuthModalOpen(true);
+                        }}
+                        className="rounded-md border border-[#CBD5E1] bg-[#F8FAFC] px-2.5 py-1.5 text-[11px] font-semibold text-[#0A2540] hover:bg-[#F1F5F9] cursor-pointer"
+                      >
+                        Switch Auth / .env Wallet
+                      </button>
+                    </div>
                     <button
                       type="button"
                       onClick={async () => {
