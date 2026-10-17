@@ -1,11 +1,20 @@
 'use client';
 
 import { createContext, useContext } from 'react';
-import { encodeFunctionData, type Abi, type Address, type Hash, type Hex } from 'viem';
+import {
+  encodeFunctionData,
+  keccak256,
+  toHex,
+  type Abi,
+  type Address,
+  type Hash,
+  type Hex,
+} from 'viem';
 import {
   formatDidBaseBadge,
   formatDidPkh,
   resolveCorporateVleiProfile,
+  type CorporateIdentityRole,
   type CorporateVleiProfile,
   type UnderwriterBondNode,
   type W3CVerifiableCredentialSummary,
@@ -14,27 +23,16 @@ import type {
   RWAInvoiceRecord,
   TrancheVaultPool,
 } from '@/layers/layer1-rwa-core';
+import { DIPTOS_CONTRACT_ADDRESSES, IDENTITY_REGISTRY_ABI } from '../config/contractAbis';
 
 export type DiptosWorkspaceRole = 'supplier' | 'financier' | 'registry' | 'security';
 
 export type AuthLoginMethod =
-  | 'env-wallet'
+  | 'browser-wallet'
+  | 'webauthn-passkey'
   | 'email-otp'
   | 'sms-otp'
-  | 'webauthn-passkey'
-  | 'browser-wallet'
   | 'privy-smart-wallet';
-
-export interface EnvWalletLiveSummary {
-  keyId: 'supplier' | 'buyer' | 'financier';
-  label: string;
-  address: Address;
-  vlei: string;
-  legalName: string;
-  jurisdiction: string;
-  ethBalanceFormatted: string;
-  usdcBalanceFormatted: string;
-}
 
 export interface OnChainIdentityRecord {
   wallet: Address;
@@ -43,8 +41,12 @@ export interface OnChainIdentityRecord {
   legalName: string;
   jurisdiction: string;
   qviIssuer: string;
+  role: CorporateIdentityRole;
+  vleiClaimHash: Hex;
   verified: boolean;
   registeredAt: number;
+  ethBalanceFormatted?: string;
+  usdcBalanceFormatted?: string;
 }
 
 export interface LiveProtocolState {
@@ -61,12 +63,12 @@ export interface LiveProtocolState {
     RWA_VAULT_4626: Address;
     SETTLEMENT_ESCROW: Address;
   };
-  envWallets: EnvWalletLiveSummary[];
   connectedWalletBalances: {
     ethBalance: string;
     usdcBalance: string;
     isVerifiedOnChain: boolean;
   };
+  connectedIdentity?: OnChainIdentityRecord | null;
   invoices: RWAInvoiceRecord[];
   vaults: TrancheVaultPool[];
   identities: OnChainIdentityRecord[];
@@ -106,6 +108,251 @@ export type WagmiWriteContractAsyncFn = (args: {
   args?: readonly unknown[];
   value?: bigint;
 }) => Promise<Hash>;
+
+export interface InjectedEthereumProvider {
+  isMetaMask?: boolean;
+  request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
+  on?: (event: string, listener: (...args: unknown[]) => void) => void;
+  removeListener?: (event: string, listener: (...args: unknown[]) => void) => void;
+}
+
+export interface MetaMaskConnectResult {
+  address: Address;
+  chainId: number;
+  didPkh: string;
+  signature: string;
+  signedChallenge: string;
+  onChainIdentity: OnChainIdentityRecord | null;
+}
+
+export interface RegisterCorporateIdentityParams {
+  legalName: string;
+  role: CorporateIdentityRole;
+  lei: string;
+  jurisdiction?: string;
+  mintInitialFaucet?: boolean;
+}
+
+export function getEthereumChainAddParams(chainId: number) {
+  if (chainId === 31337) {
+    return {
+      chainId: '0x7a69',
+      chainName: 'Diptos Local Anvil',
+      nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+      rpcUrls: [process.env.NEXT_PUBLIC_RPC_URL || 'http://127.0.0.1:8545'],
+    };
+  }
+  if (chainId === 8453) {
+    return {
+      chainId: '0x2105',
+      chainName: 'Base',
+      nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+      rpcUrls: ['https://mainnet.base.org', 'http://127.0.0.1:8545'],
+      blockExplorerUrls: ['https://basescan.org'],
+    };
+  }
+  return {
+    chainId: '0x14a34',
+    chainName: 'Base Sepolia',
+    nativeCurrency: { name: 'Sepolia Ether', symbol: 'ETH', decimals: 18 },
+    rpcUrls: ['https://sepolia.base.org'],
+    blockExplorerUrls: ['https://sepolia.basescan.org'],
+  };
+}
+
+/**
+ * Queries IdentityRegistry.sol on-chain via eth_call on the injected provider
+ * or returns null if the address is not yet registered on-chain.
+ */
+export async function queryOnChainIdentityViaProvider(params: {
+  ethereum: InjectedEthereumProvider;
+  address: Address;
+  identityRegistryAddress?: Address;
+}): Promise<OnChainIdentityRecord | null> {
+  const registryAddr =
+    params.identityRegistryAddress || DIPTOS_CONTRACT_ADDRESSES.IDENTITY_REGISTRY;
+  try {
+    const data = encodeFunctionData({
+      abi: IDENTITY_REGISTRY_ABI,
+      functionName: 'getIdentity',
+      args: [params.address],
+    });
+    const rawResult = (await params.ethereum.request({
+      method: 'eth_call',
+      params: [{ to: registryAddr, data }, 'latest'],
+    })) as Hex | undefined;
+
+    if (!rawResult || rawResult === '0x' || rawResult.length < 66) {
+      return null;
+    }
+
+    const { decodeFunctionResult } = await import('viem');
+    const decoded = decodeFunctionResult({
+      abi: IDENTITY_REGISTRY_ABI,
+      functionName: 'getIdentity',
+      data: rawResult,
+    }) as {
+      wallet: Address;
+      onchainIdContract: Address;
+      vlei: string;
+      legalName: string;
+      jurisdiction: string;
+      qviIssuer: string;
+      role: string;
+      vleiClaimHash: Hex;
+      verified: boolean;
+      registeredAt: bigint;
+    };
+
+    if (!decoded.verified || Number(decoded.registeredAt) === 0) {
+      return null;
+    }
+
+    const upperRole = (decoded.role || 'SUPPLIER').toUpperCase();
+    const role: CorporateIdentityRole =
+      upperRole === 'BUYER'
+        ? 'BUYER'
+        : upperRole === 'FINANCIER'
+        ? 'FINANCIER'
+        : 'SUPPLIER';
+
+    return {
+      wallet: decoded.wallet,
+      onchainIdContract: decoded.onchainIdContract,
+      vlei: decoded.vlei,
+      legalName: decoded.legalName,
+      jurisdiction: decoded.jurisdiction,
+      qviIssuer: decoded.qviIssuer,
+      role,
+      vleiClaimHash: decoded.vleiClaimHash,
+      verified: decoded.verified,
+      registeredAt: Number(decoded.registeredAt),
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Dedicated MetaMask connect & account switcher that:
+ * 1. Verifies window.ethereum exists
+ * 2. Calls wallet_requestPermissions([{ eth_accounts: {} }]) followed by eth_requestAccounts
+ *    to force the MetaMask popup window open every single time
+ * 3. Checks eth_chainId and calls wallet_switchEthereumChain (catching 4902 with wallet_addEthereumChain)
+ *    if the active chain does not match Base Sepolia (0x14a34 / 84532) or Local Anvil (0x7a69 / 31337)
+ * 4. Requests an EIP-191 personal_sign authentication signature containing address, chainId, timestamp,
+ *    and dynamic DID (did:pkh:eip155:${chainId}:${address})
+ * 5. Queries IdentityRegistry.sol on-chain for the connected address
+ */
+export async function executeMetaMaskConnectOrSwitch(params?: {
+  ethereum?: InjectedEthereumProvider;
+  targetChainId?: number;
+  identityRegistryAddress?: Address;
+}): Promise<MetaMaskConnectResult> {
+  const eth =
+    params?.ethereum ??
+    (typeof window !== 'undefined'
+      ? (window as unknown as { ethereum?: InjectedEthereumProvider }).ethereum
+      : undefined);
+
+  if (!eth) {
+    const err = new Error(
+      'MetaMask browser extension (window.ethereum) was not detected. Please install MetaMask from https://metamask.io/download/ to connect an external EOA wallet.'
+    );
+    (err as Error & { code?: string }).code = 'METAMASK_NOT_FOUND';
+    throw err;
+  }
+
+  // Step 2: Force MetaMask account selection popup window via wallet_requestPermissions
+  await eth.request({
+    method: 'wallet_requestPermissions',
+    params: [{ eth_accounts: {} }],
+  });
+
+  const accounts = (await eth.request({
+    method: 'eth_requestAccounts',
+  })) as string[];
+
+  const connectedAddress = accounts?.[0] as Address | undefined;
+  if (!connectedAddress) {
+    throw new Error('MetaMask returned no active accounts. Please unlock MetaMask and select an account.');
+  }
+
+  // Step 3: Check active chain ID via eth_chainId and switch/add chain if needed
+  const rawChainHex = (await eth.request({
+    method: 'eth_chainId',
+  })) as string;
+
+  const parsedCurrentChainId =
+    typeof rawChainHex === 'string' && rawChainHex.startsWith('0x')
+      ? parseInt(rawChainHex, 16)
+      : Number(rawChainHex);
+
+  const validTargetChains = [84532, 31337, 8453];
+  const desiredChainId =
+    params?.targetChainId ??
+    (validTargetChains.includes(parsedCurrentChainId) ? parsedCurrentChainId : 84532);
+
+  let finalChainId = parsedCurrentChainId;
+  const isTargetMatch = params?.targetChainId
+    ? parsedCurrentChainId === params.targetChainId
+    : validTargetChains.includes(parsedCurrentChainId);
+
+  if (!isTargetMatch) {
+    const targetHex = `0x${desiredChainId.toString(16)}`;
+    try {
+      await eth.request({
+        method: 'wallet_switchEthereumChain',
+        params: [{ chainId: targetHex }],
+      });
+      finalChainId = desiredChainId;
+    } catch (switchErr: unknown) {
+      const errCode = (switchErr as { code?: number })?.code;
+      if (errCode === 4902) {
+        await eth.request({
+          method: 'wallet_addEthereumChain',
+          params: [getEthereumChainAddParams(desiredChainId)],
+        });
+        finalChainId = desiredChainId;
+      } else {
+        throw switchErr;
+      }
+    }
+  }
+
+  // Step 4: Request EIP-191 personal_sign challenge proving live ownership of the key
+  const didPkh = formatDidPkh(connectedAddress, finalChainId);
+  const timestamp = new Date().toISOString();
+  const signedChallenge = [
+    'Diptos Institutional RWA Protocol (diptos.xyz)',
+    'Action: Cryptographic Wallet Authentication & On-Chain DID Resolution',
+    `Address: ${connectedAddress}`,
+    `Chain ID: ${finalChainId}`,
+    `DID: ${didPkh}`,
+    `Timestamp: ${timestamp}`,
+  ].join('\n');
+
+  const signature = (await eth.request({
+    method: 'personal_sign',
+    params: [toHex(signedChallenge), connectedAddress],
+  })) as string;
+
+  // Step 5: Query IdentityRegistry.sol on-chain for connectedAddress
+  const onChainIdentity = await queryOnChainIdentityViaProvider({
+    ethereum: eth,
+    address: connectedAddress,
+    identityRegistryAddress: params?.identityRegistryAddress,
+  });
+
+  return {
+    address: connectedAddress,
+    chainId: finalChainId,
+    didPkh,
+    signature,
+    signedChallenge,
+    onChainIdentity,
+  };
+}
 
 /**
  * Pure execution dispatcher used by useDiptosIdentity().executeSponsoredTx:
@@ -170,15 +417,18 @@ export interface DiptosIdentityContextValue {
   isLivePrivyConfigured: boolean;
   authMethod: AuthLoginMethod;
   authIdentifier: string | null;
-  activeEnvKeyId: 'supplier' | 'buyer' | 'financier';
-  chainId: 8453 | 84532;
-  setChainId: (chainId: 8453 | 84532) => void;
+  lastAuthSignature: string | null;
+  chainId: number;
+  setChainId: (chainId: number) => void;
+  switchNetworkInMetaMask: (targetChainId: number) => Promise<void>;
   smartAccountAddress: Address | null;
   eoaAddress: Address | null;
   activeAddress: Address | null;
   didPkh: string | null;
   didBaseDisplay: string | null;
   vleiProfile: CorporateVleiProfile | null;
+  isRegisteredOnChain: boolean;
+  registeredCorporateRole: CorporateIdentityRole | null;
   activeRole: DiptosWorkspaceRole;
   setActiveRole: (role: DiptosWorkspaceRole) => void;
   walletExecutionMode: 'smart-wallet' | 'external-eoa';
@@ -204,9 +454,12 @@ export interface DiptosIdentityContextValue {
   authenticateWithMethod: (params: {
     method: AuthLoginMethod;
     identifier?: string;
-    envKeyId?: 'supplier' | 'buyer' | 'financier';
   }) => Promise<void>;
+  connectOrSwitchMetaMask: (targetChainId?: number) => Promise<MetaMaskConnectResult>;
   connectMetaMaskWallet: () => Promise<Address>;
+  registerCorporateIdentityOnChain: (
+    params: RegisterCorporateIdentityParams
+  ) => Promise<ExecuteSponsoredTxResult>;
   isAuthModalOpen: boolean;
   setIsAuthModalOpen: (open: boolean) => void;
   isFaucetModalOpen: boolean;
@@ -216,26 +469,28 @@ export interface DiptosIdentityContextValue {
   executeSponsoredTx: (params: ExecuteSponsoredTxParams) => Promise<ExecuteSponsoredTxResult>;
 }
 
-const DEFAULT_SUPPLIER_ENV_WALLET = (process.env.NEXT_PUBLIC_SUPPLIER_WALLET_ADDRESS ||
-  '0x89A9314d76ef6EF3E1DC1efE40b704373B2f709b') as Address;
-const DEFAULT_BUYER_ENV_WALLET = (process.env.NEXT_PUBLIC_BUYER_WALLET_ADDRESS ||
-  '0x8c12f05ad5030A1F7B27464A99D4800C17D23A0C') as Address;
+const EPHEMERAL_SESSION_ADDRESS = `0x${keccak256(
+  toHex('diptos:dynamic:session:default')
+).slice(26)}` as Address;
 
 export const DiptosIdentityContext = createContext<DiptosIdentityContextValue>({
   isAuthenticated: true,
   isReady: true,
   isLivePrivyConfigured: false,
-  authMethod: 'env-wallet',
-  authIdentifier: 'Supplier (.env Base/ETH Wallet)',
-  activeEnvKeyId: 'supplier',
-  chainId: 8453,
+  authMethod: 'browser-wallet',
+  authIdentifier: 'Connect MetaMask / EOA',
+  lastAuthSignature: null,
+  chainId: 84532,
   setChainId: () => undefined,
-  smartAccountAddress: DEFAULT_SUPPLIER_ENV_WALLET,
-  eoaAddress: DEFAULT_BUYER_ENV_WALLET,
-  activeAddress: DEFAULT_SUPPLIER_ENV_WALLET,
-  didPkh: formatDidPkh(DEFAULT_SUPPLIER_ENV_WALLET, 8453),
-  didBaseDisplay: formatDidBaseBadge(DEFAULT_SUPPLIER_ENV_WALLET),
-  vleiProfile: resolveCorporateVleiProfile(DEFAULT_SUPPLIER_ENV_WALLET, 8453),
+  switchNetworkInMetaMask: async () => undefined,
+  smartAccountAddress: EPHEMERAL_SESSION_ADDRESS,
+  eoaAddress: EPHEMERAL_SESSION_ADDRESS,
+  activeAddress: EPHEMERAL_SESSION_ADDRESS,
+  didPkh: formatDidPkh(EPHEMERAL_SESSION_ADDRESS, 84532),
+  didBaseDisplay: formatDidBaseBadge(EPHEMERAL_SESSION_ADDRESS),
+  vleiProfile: resolveCorporateVleiProfile(EPHEMERAL_SESSION_ADDRESS, 84532),
+  isRegisteredOnChain: false,
+  registeredCorporateRole: null,
   activeRole: 'supplier',
   setActiveRole: () => undefined,
   walletExecutionMode: 'smart-wallet',
@@ -246,18 +501,32 @@ export const DiptosIdentityContext = createContext<DiptosIdentityContextValue>({
   refreshProtocolState: async () => undefined,
   executeOnchainAction: async () => ({
     hash: '0x8f4e2c9a71b3d04f00000000000000000000000000000000000000009941a2b8',
-    executionMode: 'erc4337-sponsored',
-    chainId: 8453,
-    gasSponsored: true,
+    executionMode: 'wagmi-eoa',
+    chainId: 84532,
+    gasSponsored: false,
   }),
   requestFaucetFunds: async () => ({
     ethTxHash: '0x0',
     usdcTxHash: '0x0',
-    newEthBalanceFormatted: '25.0000',
-    newUsdcBalanceFormatted: '500,000',
+    newEthBalanceFormatted: '10.0000',
+    newUsdcBalanceFormatted: '250,000',
   }),
   authenticateWithMethod: async () => undefined,
-  connectMetaMaskWallet: async () => DEFAULT_SUPPLIER_ENV_WALLET,
+  connectOrSwitchMetaMask: async () => ({
+    address: EPHEMERAL_SESSION_ADDRESS,
+    chainId: 84532,
+    didPkh: formatDidPkh(EPHEMERAL_SESSION_ADDRESS, 84532),
+    signature: '0x0',
+    signedChallenge: '',
+    onChainIdentity: null,
+  }),
+  connectMetaMaskWallet: async () => EPHEMERAL_SESSION_ADDRESS,
+  registerCorporateIdentityOnChain: async () => ({
+    hash: '0x8f4e2c9a71b3d04f00000000000000000000000000000000000000009941a2b8',
+    executionMode: 'wagmi-eoa',
+    chainId: 84532,
+    gasSponsored: false,
+  }),
   isAuthModalOpen: false,
   setIsAuthModalOpen: () => undefined,
   isFaucetModalOpen: false,
@@ -266,9 +535,9 @@ export const DiptosIdentityContext = createContext<DiptosIdentityContextValue>({
   logout: async () => undefined,
   executeSponsoredTx: async () => ({
     hash: '0x8f4e2c9a71b3d04f00000000000000000000000000000000000000009941a2b8',
-    executionMode: 'erc4337-sponsored',
-    chainId: 8453,
-    gasSponsored: true,
+    executionMode: 'wagmi-eoa',
+    chainId: 84532,
+    gasSponsored: false,
   }),
 });
 

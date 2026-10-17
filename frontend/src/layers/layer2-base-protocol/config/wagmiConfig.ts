@@ -1,13 +1,17 @@
-import { createConfig } from '@privy-io/wagmi';
-import { http } from 'viem';
-import { base, baseSepolia } from 'viem/chains';
+import { createConfig, http } from 'wagmi';
+import { injected } from 'wagmi/connectors';
+import { base, baseSepolia, foundry } from 'viem/chains';
 
-export const DIPTOS_SUPPORTED_CHAINS = [base, baseSepolia] as const;
+export const DIPTOS_SUPPORTED_CHAINS = [baseSepolia, foundry, base] as const;
+
+const localRpcUrl = process.env.NEXT_PUBLIC_RPC_URL || 'http://127.0.0.1:8545';
 
 export const diptosWagmiConfig = createConfig({
-  chains: [base, baseSepolia],
+  chains: [baseSepolia, foundry, base],
+  connectors: [injected()],
   transports: {
-    [base.id]: http('https://mainnet.base.org'),
     [baseSepolia.id]: http('https://sepolia.base.org'),
+    [foundry.id]: http(localRpcUrl),
+    [base.id]: http(localRpcUrl),
   },
 });

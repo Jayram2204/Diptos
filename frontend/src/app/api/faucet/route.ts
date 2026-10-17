@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import {
   disburseFaucetFunds,
-  getEnvConfiguredWallets,
   readDynamicProtocolState,
 } from '@/layers/layer2-base-protocol/server/onchainEngine';
 import type { Address } from 'viem';
@@ -11,28 +10,9 @@ export const dynamic = 'force-dynamic';
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const targetAddress = body.address as Address | undefined;
+    const targetAddress = (body.recipientAddress || body.address) as Address | undefined;
     const ethAmount = String(body.ethAmount || '10');
     const usdcAmount = String(body.usdcAmount || '250000');
-
-    if (body.fundAllEnvWallets) {
-      const envWallets = getEnvConfiguredWallets();
-      const receipts = [];
-      for (const w of envWallets) {
-        const res = await disburseFaucetFunds({
-          recipientAddress: w.address,
-          ethAmount,
-          usdcAmount,
-        });
-        receipts.push(res);
-      }
-      const state = await readDynamicProtocolState(targetAddress);
-      return NextResponse.json({
-        ok: true,
-        faucetReceipts: receipts,
-        state,
-      });
-    }
 
     if (!targetAddress || !/^0x[a-fA-F0-9]{40}$/.test(targetAddress)) {
       return NextResponse.json(
@@ -50,6 +30,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       ok: true,
+      faucet: receipt,
       faucetReceipt: receipt,
       state,
     });

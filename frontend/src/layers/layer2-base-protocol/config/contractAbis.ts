@@ -11,19 +11,19 @@ export const DIPTOS_CONTRACT_ADDRESSES: Record<
   Address
 > = {
   TEST_USDC: (process.env.NEXT_PUBLIC_TEST_USDC_ADDRESS ??
-    '0x5fbdb2315678afecb367f032d93f642f64180aa3') as Address,
+    '0x9a9f2ccfde556a7e9ff0848998aa4a0cfd8863ae') as Address,
   IDENTITY_REGISTRY: (process.env.NEXT_PUBLIC_IDENTITY_REGISTRY_ADDRESS ??
-    '0xe7f1725e7734ce288f8367e1bb143e90bb3f0512') as Address,
+    '0x68b1d87f95878fe05b998f19b66f4baba5de1aed') as Address,
   SLASHER: (process.env.NEXT_PUBLIC_SLASHER_ADDRESS ??
-    '0x9fe46736679d2d9a65f0992f2272de9f3c7fa6e0') as Address,
+    '0x3aa5ebb10dc797cac828524e59a333d0a371443c') as Address,
   INVOICE_REGISTRY: (process.env.NEXT_PUBLIC_INVOICE_REGISTRY_ADDRESS ??
-    '0xcf7ed3acca5a467e9e704c703e8d87f634fb0fc9') as Address,
+    '0xc6e7df5e7b4f2a278906862b61205850344d4e7d') as Address,
   RWA_INVOICE_3643: (process.env.NEXT_PUBLIC_RWA_INVOICE_3643_ADDRESS ??
-    '0xdc64a140aa3e981100a9beca4e685f962f0cf6c9') as Address,
+    '0x59b670e9fa9d0a427751af201d676719a970857b') as Address,
   RWA_VAULT_4626: (process.env.NEXT_PUBLIC_RWA_VAULT_4626_ADDRESS ??
-    '0x5fc8d32690cc91d4c39d9d3abcbd16989f875707') as Address,
+    '0x4ed7c70f96b99c776995fb64377f0d4ab3b0e1c1') as Address,
   SETTLEMENT_ESCROW: (process.env.NEXT_PUBLIC_SETTLEMENT_ESCROW_ADDRESS ??
-    '0x0165878a594ca255338adfa4d48449f69242eb8f') as Address,
+    '0x322813fd9a801c5507c9de605d63cea4f2ce6c44') as Address,
 };
 
 export const TEST_USDC_ABI = parseAbi([
@@ -65,9 +65,10 @@ export const RWA_VAULT_4626_ABI = parseAbi([
 ]);
 
 export const IDENTITY_REGISTRY_ABI = parseAbi([
-  'struct CorporateIdentityRecord { address wallet; address onchainIdContract; string vlei; string legalName; string jurisdiction; string qviIssuer; bool verified; uint64 registeredAt; }',
+  'struct CorporateIdentityRecord { address wallet; address onchainIdContract; string vlei; string legalName; string jurisdiction; string qviIssuer; string role; bytes32 vleiClaimHash; bool verified; uint64 registeredAt; }',
   'struct VerifiableCredentialRecord { string vcId; string vcType; string issuerDid; string issuerName; address subjectAddress; string subjectDid; string claimSummary; bool revoked; uint64 issuedAt; }',
   'function registerIdentity(address _user, address _onchainId, string _vlei, string _legalName, string _jurisdiction, string _qviIssuer) external',
+  'function registerCorporateIdentity(address _user, address _onchainId, string _vlei, string _legalName, string _jurisdiction, string _qviIssuer, string _role) external',
   'function issueCredential(string _vcId, string _vcType, string _issuerDid, string _issuerName, address _subjectAddress, string _subjectDid, string _claimSummary) external',
   'function isVerified(address _user) external view returns (bool)',
   'function getIdentity(address _user) external view returns (CorporateIdentityRecord)',

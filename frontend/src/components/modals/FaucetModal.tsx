@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { CheckCircle2, Coins, Droplets, Sparkles, X } from 'lucide-react';
+import { CheckCircle2, Coins, Droplets, X } from 'lucide-react';
 import type { Address } from 'viem';
 import { useDiptosIdentity } from '@/layers/layer2-base-protocol';
 
@@ -29,7 +29,7 @@ export function FaucetModal() {
   if (!isFaucetModalOpen) return null;
 
   const targetAddress = (customRecipient.trim() || activeAddress || '') as Address;
-  const envWallets = protocolState?.envWallets ?? [];
+  const registeredIdentities = protocolState?.identities ?? [];
 
   const handleDisburse = async (overrideRecipient?: Address) => {
     setErrorMsg(null);
@@ -63,15 +63,15 @@ export function FaucetModal() {
                 Diptos Base L2 &amp; ETH Institutional Test Faucet
               </h2>
               <p className="text-xs text-[#475569]">
-                Mints native ETH + <code className="font-mono">DiptosTestUSDC.sol</code> (dUSDC) &amp;
-                registers GLEIF vLEI in <code className="font-mono">IdentityRegistry.sol</code>
+                Mints native ETH + <code className="font-mono">DiptosTestUSDC.sol</code> (dUSDC) to
+                your connected MetaMask or Smart Account wallet
               </p>
             </div>
           </div>
           <button
             type="button"
             onClick={() => setIsFaucetModalOpen(false)}
-            className="rounded-lg border border-[#E2E8F0] bg-white p-1.5 text-[#475569] hover:text-[#0F172A]"
+            className="rounded-lg border border-[#E2E8F0] bg-white p-1.5 text-[#475569] hover:text-[#0F172A] cursor-pointer"
           >
             <X className="h-4 w-4" />
           </button>
@@ -79,54 +79,56 @@ export function FaucetModal() {
 
         {/* Body */}
         <div className="p-5 space-y-4">
-          {/* Pre-configured .env Wallets Quick Faucet */}
-          <div>
-            <h3 className="text-xs font-bold uppercase tracking-wider text-[#475569] mb-2">
-              Configured .env Base / ETH Wallets (Live On-Chain Balances)
-            </h3>
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-              {envWallets.map((w) => (
-                <div
-                  key={w.keyId}
-                  className="rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] p-3 flex flex-col justify-between gap-2"
-                >
-                  <div>
-                    <div className="flex items-center justify-between">
-                      <span className="rounded bg-[#0A2540] px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase text-white">
-                        {w.keyId}
-                      </span>
-                      <span className="font-mono text-[10px] text-[#475569]">
-                        {w.address.slice(0, 6)}...{w.address.slice(-4)}
-                      </span>
-                    </div>
-                    <p className="mt-1.5 text-xs font-semibold text-[#0F172A] line-clamp-1">
-                      {w.legalName}
-                    </p>
-                    <p className="mt-1 font-mono text-xs font-bold text-[#059669] tabular-nums">
-                      {w.usdcBalanceFormatted} dUSDC
-                    </p>
-                    <p className="font-mono text-[11px] text-[#475569] tabular-nums">
-                      {w.ethBalanceFormatted} ETH
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    disabled={isMinting}
-                    onClick={() => handleDisburse(w.address)}
-                    className="w-full rounded border border-[#CBD5E1] bg-white px-2.5 py-1.5 text-[11px] font-semibold text-[#0A2540] hover:bg-[#F1F5F9] disabled:opacity-50"
+          {/* Dynamically Registered On-Chain Corporate Identities Quick Top-Up */}
+          {registeredIdentities.length > 0 && (
+            <div>
+              <h3 className="text-xs font-bold uppercase tracking-wider text-[#475569] mb-2">
+                Registered On-Chain Corporate Identities (IdentityRegistry.sol)
+              </h3>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                {registeredIdentities.map((id) => (
+                  <div
+                    key={id.wallet}
+                    className="rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] p-3 flex flex-col justify-between gap-2"
                   >
-                    + Top Up .env Wallet
-                  </button>
-                </div>
-              ))}
+                    <div>
+                      <div className="flex items-center justify-between">
+                        <span className="rounded bg-[#0A2540] px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase text-white">
+                          {id.role}
+                        </span>
+                        <span className="font-mono text-[10px] text-[#475569]">
+                          {id.wallet.slice(0, 6)}...{id.wallet.slice(-4)}
+                        </span>
+                      </div>
+                      <p className="mt-1.5 text-xs font-semibold text-[#0F172A] line-clamp-1">
+                        {id.legalName}
+                      </p>
+                      <p className="mt-1 font-mono text-xs font-bold text-[#059669] tabular-nums">
+                        {id.usdcBalanceFormatted ?? '0'} dUSDC
+                      </p>
+                      <p className="font-mono text-[11px] text-[#475569] tabular-nums">
+                        {id.ethBalanceFormatted ?? '0.0000'} ETH
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={isMinting}
+                      onClick={() => handleDisburse(id.wallet)}
+                      className="w-full rounded border border-[#CBD5E1] bg-white px-2.5 py-1.5 text-[11px] font-semibold text-[#0A2540] hover:bg-[#F1F5F9] disabled:opacity-50 cursor-pointer"
+                    >
+                      + Top Up {id.role} Wallet
+                    </button>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Custom / Active Wallet Faucet Form */}
           <div className="rounded-lg border border-[#E2E8F0] bg-white p-4 space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-[#0F172A]">
-                Custom / Active Wallet Faucet Disbursement
+                Connected / Custom Wallet Faucet Disbursement
               </span>
               <span className="font-mono text-[11px] text-[#0284C7]">
                 Contract: {protocolState?.contracts.TEST_USDC}
@@ -195,9 +197,9 @@ export function FaucetModal() {
 
             <button
               type="button"
-              disabled={isMinting}
+              disabled={isMinting || !targetAddress}
               onClick={() => handleDisburse()}
-              className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#0A2540] px-4 py-2.5 text-xs font-semibold text-white hover:bg-[#1E293B] disabled:opacity-50"
+              className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#0A2540] px-4 py-2.5 text-xs font-semibold text-white hover:bg-[#1E293B] disabled:opacity-50 cursor-pointer"
             >
               <Coins className="h-4 w-4 text-[#14B8A6]" />
               {isMinting

@@ -87,11 +87,9 @@ export function SupplierWorkspaceView({
       const dueDate = new Date(dueUnix * 1000).toISOString().slice(0, 10);
       const sellerLei =
         vleiProfile?.lei ||
-        protocolState?.envWallets?.[0]?.vlei ||
         `549300${(activeAddress || '0x0').slice(2, 16).toUpperCase()}`;
       const sellerName =
         vleiProfile?.legalName ||
-        protocolState?.envWallets?.[0]?.legalName ||
         `Supplier (${activeAddress?.slice(0, 6)})`;
 
       const canonicalHash = computeCanonicalInvoiceHash({

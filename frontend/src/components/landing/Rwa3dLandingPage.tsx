@@ -36,7 +36,6 @@ export function Rwa3dLandingPage() {
   const liveVaults = protocolState?.vaults ?? [];
   const liveIdentities = protocolState?.identities ?? [];
   const liveNodes = protocolState?.verifierNodes ?? [];
-  const envWallets = protocolState?.envWallets ?? [];
 
   const totalTvlUsd = liveVaults.reduce((sum, v) => sum + v.tvlUsd, 0);
   const totalReceivablesUsd = liveInvoices.reduce((sum, i) => sum + i.faceValueUsd, 0);
@@ -149,7 +148,7 @@ export function Rwa3dLandingPage() {
                   className="inline-flex items-center gap-1.5 rounded-xl border border-sky-400/40 bg-sky-500/15 px-4 py-3 font-mono text-xs font-semibold text-sky-200 hover:bg-sky-500/25 cursor-pointer"
                 >
                   <KeyRound className="h-4 w-4" />
-                  Switch Auth / .env Wallet
+                  Connect / Switch MetaMask &amp; DID
                 </button>
               </div>
             </div>
@@ -396,45 +395,58 @@ export function Rwa3dLandingPage() {
             <div className="flex items-center justify-between border-b border-[#E2E8F0] pb-3">
               <div>
                 <h2 className="text-sm font-bold text-[#0F172A]">
-                  Pre-Configured .env Base / ETH Wallets &amp; Live Faucet Balances
+                  Live Registered Corporate DIDs (IdentityRegistry.sol)
                 </h2>
                 <p className="text-xs text-[#64748B]">
-                  Loaded dynamically from <code className="font-mono">.env.local</code> and funded
-                  by the on-chain Faucet.
+                  100% dynamic on-chain Corporate Identities registered via MetaMask &amp; ERC-4337.
                 </p>
               </div>
               <button
                 type="button"
-                onClick={() => setIsFaucetModalOpen(true)}
+                onClick={() => setIsAuthModalOpen(true)}
                 className="rounded-lg bg-[#0A2540] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#1E293B] cursor-pointer"
               >
-                + Mint Faucet Funds
+                + Register / Switch DID
               </button>
             </div>
 
             <div className="mt-3 space-y-2.5">
-              {envWallets.map((w) => (
-                <div
-                  key={w.keyId}
-                  className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] p-3"
-                >
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="rounded bg-[#0A2540] px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase text-white">
-                        {w.keyId}
-                      </span>
-                      <span className="text-xs font-bold text-[#0F172A]">{w.legalName}</span>
-                    </div>
-                    <div className="mt-1 font-mono text-[11px] text-[#475569]">
-                      {w.address} • vLEI: {w.vlei}
-                    </div>
-                  </div>
-                  <div className="text-right font-mono text-xs tabular-nums">
-                    <div className="font-bold text-[#059669]">{w.usdcBalanceFormatted} dUSDC</div>
-                    <div className="text-[11px] text-[#64748B]">{w.ethBalanceFormatted} ETH</div>
-                  </div>
+              {liveIdentities.length === 0 ? (
+                <div className="rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] p-5 text-center text-xs text-[#475569]">
+                  No corporate identities registered yet. Click{' '}
+                  <strong>Connect / Switch MetaMask</strong> to connect your wallet and register your
+                  Legal Entity Name, Role (<code className="font-mono">SUPPLIER</code>,{' '}
+                  <code className="font-mono">BUYER</code>, or{' '}
+                  <code className="font-mono">FINANCIER</code>), and 20-char LEI on-chain.
                 </div>
-              ))}
+              ) : (
+                liveIdentities.map((id) => (
+                  <div
+                    key={id.wallet}
+                    className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] p-3"
+                  >
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="rounded bg-[#0A2540] px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase text-white">
+                          {id.role}
+                        </span>
+                        <span className="text-xs font-bold text-[#0F172A]">{id.legalName}</span>
+                      </div>
+                      <div className="mt-1 font-mono text-[11px] text-[#475569]">
+                        {id.wallet} • vLEI: {id.vlei}
+                      </div>
+                    </div>
+                    <div className="text-right font-mono text-xs tabular-nums">
+                      <div className="font-bold text-[#059669]">
+                        {id.usdcBalanceFormatted ?? '0'} dUSDC
+                      </div>
+                      <div className="text-[11px] text-[#64748B]">
+                        {id.ethBalanceFormatted ?? '0.0000'} ETH
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </section>

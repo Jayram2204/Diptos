@@ -29,7 +29,6 @@ export async function POST(request: Request) {
     const body = await request.json();
     const txReceipt = await executeDynamicOnchainAction({
       action: body.action,
-      signerKeyId: body.signerKeyId,
       callerAddress: body.callerAddress as Address | undefined,
       data: body.data,
       rawCallData: body.rawCallData as
