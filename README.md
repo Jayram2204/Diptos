@@ -90,3 +90,13 @@ npm run dev
 - **`/financier`** — Financier Credit Desk (Live ERC-4626 Senior/Junior Vault Deposits, Atomic DvP & Maturity Settlement)
 - **`/registry`** — Canonical Hash Anti-Double-Financing Simulator & Live `InvoiceRegistry.sol` Ledger
 - **`/security`** — GLEIF vLEI + ONCHAINID Hierarchy, Live W3C VC 2.0 Issuance & `Slasher.sol` Verifier Bonds
+
+---
+
+## 6. Architecture & Strategy Documentation
+- **[Go-to-Market (GTM) Strategy](file:///Users/noname/documents/diptos/docs/GTM_STRATEGY.md)** — Production GTM Strategy for Institutional Capital, Supply-Side Aggregation, and Invisible Web3 UX
+- **[Layer 1: RWA Core Engine](file:///Users/noname/documents/diptos/docs/architecture/layer1-rwa-engine.md)** — E-Invoice Ingestion, Canonical Hashing & ERC-3643 / ERC-4626 Packaging
+- **[Layer 2: Base Protocol Layer](file:///Users/noname/documents/diptos/docs/architecture/layer2-base-protocol.md)** — Atomic DvP Settlement, EAS Attestations & ERC-4337 Account Abstraction
+- **[Layer 3: DI & ZK Security Shield](file:///Users/noname/documents/diptos/docs/architecture/layer3-di-zk-security.md)** — GLEIF vLEI, ONCHAINID, Privado ID Groth16 ZK & `Slasher.sol`
+- **[Legal Enforceability & MLETR Architecture](file:///Users/noname/documents/diptos/docs/legal/mletr-ucc12-true-sale.md)** — UNCITRAL MLETR, US UCC Article 12, and True Sale Insolvency Protection
+
