@@ -6,6 +6,7 @@ import { Plus, X, ArrowRight, ShieldCheck } from 'lucide-react';
 import {
   EINVOICE_ADAPTER_SPECIFICATIONS,
   computeCanonicalInvoiceHash,
+  detectAndParseEInvoice,
   type EInvoiceStandard,
   type RWAInvoiceRecord,
   type SettlementRail,
@@ -54,6 +55,68 @@ export function SupplierWorkspaceView({
   const [newAprBps, setNewAprBps] = useState('');
   const [newTenorDays, setNewTenorDays] = useState('');
   const [newCbamKg, setNewCbamKg] = useState('');
+  const [parsedBanner, setParsedBanner] = useState<string | null>(null);
+  const [showRawPaste, setShowRawPaste] = useState(false);
+  const [rawPasteText, setRawPasteText] = useState('');
+
+  const loadSampleEInvoice = (type: 'PEPPOL' | 'GSTN' | 'CFDI' | 'ERP') => {
+    try {
+      let raw = '';
+      if (type === 'PEPPOL') {
+        raw = `<Invoice xmlns="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2"><cbc:ID>INV-2026-SG-9102</cbc:ID><cbc:IssueDate>2026-10-23</cbc:IssueDate><cbc:DocumentCurrencyCode>USD</cbc:DocumentCurrencyCode><cac:AccountingSupplierParty><cac:Party><cac:PartyTaxScheme><cbc:CompanyID>33580048329184928172</cbc:CompanyID></cac:PartyTaxScheme></cac:Party></cac:AccountingSupplierParty><cac:AccountingCustomerParty><cac:Party><cac:PartyTaxScheme><cbc:CompanyID>529900T8BM49AURSDO55</cbc:CompanyID></cac:PartyTaxScheme></cac:Party></cac:AccountingCustomerParty><cac:LegalMonetaryTotal><cbc:PayableAmount>320000.00</cbc:PayableAmount></cac:LegalMonetaryTotal></Invoice>`;
+      } else if (type === 'GSTN') {
+        raw = JSON.stringify({
+          Irn: "4a1f8b2c9e4d5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b",
+          DocDtls: { Typ: "INV", No: "IN-2026-EXP-7701", Dt: "23/10/2026" },
+          SellerDtls: { Gstin: "27AABCU9603R1ZM", LglNm: "Apex Precision Engineering" },
+          BuyerDtls: { Gstin: "07AAACD4962Q1ZS", LglNm: "Continental AG Sourcing" },
+          ValDtls: { TotInvVal: 215000.00 },
+          currency: "USD"
+        });
+      } else if (type === 'CFDI') {
+        raw = `<cfdi:Comprobante xmlns:cfdi="http://www.sat.gob.mx/cfd/4" xmlns:tfd="http://www.sat.gob.mx/TimbreFiscalDigital" Folio="CFDI-MX-40291" Fecha="2026-10-23T11:00:00" Moneda="USD" Total="185000.00"><cfdi:Emisor Rfc="MME920422AA1" /><cfdi:Receptor Rfc="CGO880315KL9" /><cfdi:Complemento><tfd:TimbreFiscalDigital UUID="9A842E3C-658F-4A42-9AE1-C8A4B6925F9C" /></cfdi:Complemento></cfdi:Comprobante>`;
+      } else {
+        raw = JSON.stringify({
+          purchaseOrderNumber: "PO-SAP-2026-8804",
+          advancedShippingNoticeId: "ASN-EBL-99120",
+          officialInvoiceNumber: "INV-SAP-5501",
+          sellerTaxIdOrLei: "33580048329184928172",
+          buyerTaxIdOrLei: "529900T8BM49AURSDO55",
+          currencyCode: "USD",
+          issueDateYYYYMMDD: "20261023",
+          faceValueUsd: 450000
+        });
+      }
+
+      handleParseAndApplyEInvoice(raw);
+    } catch (err) {
+      setParsedBanner(`Error loading template: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  };
+
+  const handleParseAndApplyEInvoice = (text: string) => {
+    try {
+      const parsed = detectAndParseEInvoice(text);
+      setNewInvNumber(parsed.canonicalInput.officialInvoiceNumber);
+      setNewStandard(parsed.standard);
+      setNewBuyerLei(parsed.canonicalInput.buyerTaxIdOrLei);
+      setNewBuyerName(parsed.extractedMetadata.buyerIdentifier || 'Anchor Corporate Obligor');
+      const valUsd = Number(parsed.canonicalInput.faceValueMinorUnits) / 100;
+      setNewFaceValueUsd(valUsd.toString());
+      setNewAprBps('885');
+      setNewTenorDays('60');
+      setNewCbamKg('420');
+
+      if (parsed.standard === 'PEPPOL_BIS_3_0') setNewCorridor('Singapore -> EU Corridor');
+      else if (parsed.standard === 'INDIA_GSTN_IRN') setNewCorridor('India -> UK Trade');
+      else if (parsed.standard === 'MEXICO_SAT_CFDI') setNewCorridor('Mexico -> US Nearshore');
+      else setNewCorridor('US -> Global Cross-Border');
+
+      setParsedBanner(`Verified & Ingested: ${parsed.standard} • Hash: ${parsed.canonicalHash.slice(0, 14)}...`);
+    } catch (err) {
+      setParsedBanner(`Parsing failed: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  };
 
   const [txBanner, setTxBanner] = useState<{
     invoiceNumber: string;
@@ -491,6 +554,79 @@ export function SupplierWorkspaceView({
               >
                 <X className="h-4 w-4" />
               </button>
+            </div>
+
+            {/* 1-Click E-Invoicing Ingestion Quick-Load Bar */}
+            <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50/75 p-3">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] font-semibold text-slate-800 flex items-center gap-1.5">
+                  <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
+                  1-Click E-Invoice Ingestion:
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowRawPaste(!showRawPaste)}
+                  className="text-[10px] font-mono text-blue-600 hover:underline cursor-pointer"
+                >
+                  {showRawPaste ? 'Hide Raw Input' : 'Paste Raw XML/JSON'}
+                </button>
+              </div>
+
+              <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
+                <button
+                  type="button"
+                  onClick={() => loadSampleEInvoice('PEPPOL')}
+                  className="rounded border border-slate-200 bg-white px-2 py-1 text-[10px] font-medium text-slate-700 hover:border-slate-900 hover:bg-slate-50 transition cursor-pointer"
+                >
+                  Peppol BIS 3.0
+                </button>
+                <button
+                  type="button"
+                  onClick={() => loadSampleEInvoice('GSTN')}
+                  className="rounded border border-slate-200 bg-white px-2 py-1 text-[10px] font-medium text-slate-700 hover:border-slate-900 hover:bg-slate-50 transition cursor-pointer"
+                >
+                  India GSTN IRN
+                </button>
+                <button
+                  type="button"
+                  onClick={() => loadSampleEInvoice('CFDI')}
+                  className="rounded border border-slate-200 bg-white px-2 py-1 text-[10px] font-medium text-slate-700 hover:border-slate-900 hover:bg-slate-50 transition cursor-pointer"
+                >
+                  Mexico CFDI 4.0
+                </button>
+                <button
+                  type="button"
+                  onClick={() => loadSampleEInvoice('ERP')}
+                  className="rounded border border-slate-200 bg-white px-2 py-1 text-[10px] font-medium text-slate-700 hover:border-slate-900 hover:bg-slate-50 transition cursor-pointer"
+                >
+                  SAP 3-Way Match
+                </button>
+              </div>
+
+              {showRawPaste && (
+                <div className="mt-2.5 space-y-1.5">
+                  <textarea
+                    rows={3}
+                    value={rawPasteText}
+                    onChange={(e) => setRawPasteText(e.target.value)}
+                    placeholder="Paste raw Peppol XML, GSTN JSON, CFDI XML, or ERP payload..."
+                    className="w-full rounded border border-slate-300 bg-white p-2 font-mono text-[11px] text-slate-800 focus:border-slate-900 focus:outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => handleParseAndApplyEInvoice(rawPasteText)}
+                    className="w-full rounded bg-slate-900 py-1 text-[11px] font-medium text-white hover:bg-slate-800 transition cursor-pointer"
+                  >
+                    Parse Document &amp; Compute Canonical Hash
+                  </button>
+                </div>
+              )}
+
+              {parsedBanner && (
+                <div className="mt-2 rounded bg-emerald-50 border border-emerald-200 px-2.5 py-1 text-[11px] font-medium text-emerald-800">
+                  {parsedBanner}
+                </div>
+              )}
             </div>
 
             <form onSubmit={handleOriginateNewInvoiceOnChain} className="mt-4 space-y-3">
