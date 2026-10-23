@@ -8,6 +8,7 @@ import {
   calculateInvoiceDiscountMath,
 } from '@/layers/layer2-base-protocol';
 import { useDiptosIdentity } from '@/hooks/useDiptosIdentity';
+import { TrancheWaterfallSimulator } from './TrancheWaterfallSimulator';
 
 export interface FinancierWorkspaceViewProps {
   invoices: RWAInvoiceRecord[];
@@ -216,6 +217,14 @@ export function FinancierWorkspaceView({
           </div>
         ))}
       </div>
+
+      {/* Tranche Waterfall & Loss Stress-Test Simulator */}
+      <TrancheWaterfallSimulator
+        seniorDropTvl={liveVaults.find((v) => v.id === 'SENIOR_DROP')?.tvlUsd || 750000}
+        juniorTinTvl={liveVaults.find((v) => v.id === 'JUNIOR_TIN')?.tvlUsd || 250000}
+        seniorDropApy={liveVaults.find((v) => v.id === 'SENIOR_DROP')?.targetApyPercent || 8.85}
+        juniorTinApy={liveVaults.find((v) => v.id === 'JUNIOR_TIN')?.targetApyPercent || 14.20}
+      />
 
       {/* Whole-Invoice ERC-3643 Orderbook Table */}
       <div className="rounded-lg border border-slate-200 bg-white shadow-none overflow-hidden">
