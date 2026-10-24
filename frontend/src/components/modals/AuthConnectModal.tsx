@@ -227,34 +227,34 @@ export function AuthConnectModal() {
     !isRegisteredOnChain || showEditIdentityForm;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0F172A]/60 backdrop-blur-xs p-4 overflow-y-auto">
-      <div className="w-full max-w-2xl rounded-xl border border-[#E2E8F0] bg-white shadow-xl overflow-hidden my-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 overflow-y-auto">
+      <div className="w-full max-w-2xl rounded-2xl border border-slate-800 bg-[#0B111E] shadow-2xl shadow-emerald-950/20 overflow-hidden my-auto">
         {/* Modal Header */}
-        <div className="flex items-center justify-between border-b border-[#E2E8F0] bg-[#F8FAFC] px-5 py-4">
+        <div className="flex items-center justify-between border-b border-slate-800/80 bg-slate-900/40 px-5 py-4">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#0A2540] text-white">
-              <ShieldCheck className="h-5 w-5 text-[#14B8A6]" />
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+              <ShieldCheck className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="text-sm font-bold text-[#0F172A]">
-                Diptos Multi-Method Institutional Auth &amp; Wallet Gateway
+              <h2 className="text-sm font-bold text-white">
+                Institutional Auth &amp; Wallet Gateway
               </h2>
-              <p className="text-xs text-[#475569]">
-                100% Dynamic EOA &amp; ERC-4337 • GLEIF vLEI Binding • IdentityRegistry.sol
+              <p className="text-xs text-slate-400">
+                Dynamic EOA &amp; ERC-4337 • GLEIF vLEI Binding • IdentityRegistry.sol
               </p>
             </div>
           </div>
           <button
             type="button"
             onClick={() => setIsAuthModalOpen(false)}
-            className="rounded-lg border border-[#E2E8F0] bg-white p-1.5 text-[#475569] hover:text-[#0F172A] cursor-pointer"
+            className="rounded-lg border border-slate-800 bg-slate-900/60 p-1.5 text-slate-400 hover:text-white hover:border-slate-700 transition cursor-pointer"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
 
         {/* Method Tabs — MetaMask / Injected EOA is Primary Default */}
-        <div className="grid grid-cols-4 gap-1 border-b border-[#E2E8F0] bg-[#F1F5F9] p-1.5 text-xs font-semibold">
+        <div className="grid grid-cols-4 gap-1 border-b border-slate-800/80 bg-[#06090F] p-1.5 text-xs font-semibold">
           <button
             type="button"
             onClick={() => {
@@ -262,13 +262,13 @@ export function AuthConnectModal() {
               setOtpSent(false);
               setErrorMsg(null);
             }}
-            className={`flex items-center justify-center gap-1.5 rounded-md py-2 transition-colors cursor-pointer ${
+            className={`flex items-center justify-center gap-1.5 rounded-lg py-2 transition-colors cursor-pointer ${
               selectedTab === 'browser-wallet'
-                ? 'bg-[#0A2540] text-white shadow-xs'
-                : 'text-[#475569] hover:text-[#0F172A]'
+                ? 'bg-slate-800 text-white shadow-xs font-bold'
+                : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            <Wallet className="h-3.5 w-3.5" />
+            <Wallet className="h-3.5 w-3.5 text-emerald-400" />
             MetaMask / Injected EOA
           </button>
           <button
@@ -278,13 +278,13 @@ export function AuthConnectModal() {
               setOtpSent(false);
               setErrorMsg(null);
             }}
-            className={`flex items-center justify-center gap-1.5 rounded-md py-2 transition-colors cursor-pointer ${
+            className={`flex items-center justify-center gap-1.5 rounded-lg py-2 transition-colors cursor-pointer ${
               selectedTab === 'webauthn-passkey'
-                ? 'bg-[#0A2540] text-white shadow-xs'
-                : 'text-[#475569] hover:text-[#0F172A]'
+                ? 'bg-slate-800 text-white shadow-xs font-bold'
+                : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            <Fingerprint className="h-3.5 w-3.5" />
+            <Fingerprint className="h-3.5 w-3.5 text-cyan-400" />
             Passkey / Smart Account
           </button>
           <button
@@ -294,13 +294,13 @@ export function AuthConnectModal() {
               setOtpSent(false);
               setErrorMsg(null);
             }}
-            className={`flex items-center justify-center gap-1.5 rounded-md py-2 transition-colors cursor-pointer ${
+            className={`flex items-center justify-center gap-1.5 rounded-lg py-2 transition-colors cursor-pointer ${
               selectedTab === 'email-otp'
-                ? 'bg-[#0A2540] text-white shadow-xs'
-                : 'text-[#475569] hover:text-[#0F172A]'
+                ? 'bg-slate-800 text-white shadow-xs font-bold'
+                : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            <Mail className="h-3.5 w-3.5" />
+            <Mail className="h-3.5 w-3.5 text-blue-400" />
             Email / OTP
           </button>
           <button
@@ -310,13 +310,13 @@ export function AuthConnectModal() {
               setOtpSent(false);
               setErrorMsg(null);
             }}
-            className={`flex items-center justify-center gap-1.5 rounded-md py-2 transition-colors cursor-pointer ${
+            className={`flex items-center justify-center gap-1.5 rounded-lg py-2 transition-colors cursor-pointer ${
               selectedTab === 'sms-otp'
-                ? 'bg-[#0A2540] text-white shadow-xs'
-                : 'text-[#475569] hover:text-[#0F172A]'
+                ? 'bg-slate-800 text-white shadow-xs font-bold'
+                : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            <Smartphone className="h-3.5 w-3.5" />
+            <Smartphone className="h-3.5 w-3.5 text-amber-400" />
             SMS OTP
           </button>
         </div>
@@ -324,31 +324,31 @@ export function AuthConnectModal() {
         {/* Modal Body */}
         <div className="p-5 space-y-4">
           {/* Active Session & Dynamic DID Telemetry Banner */}
-          <div className="rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-3.5 py-2.5 text-xs space-y-1.5">
+          <div className="rounded-xl border border-slate-800/80 bg-slate-900/50 px-4 py-3 text-xs space-y-2">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
-                <span className="font-semibold text-[#475569]">Active Signer: </span>
-                <span className="font-bold text-[#0F172A]">
+                <span className="text-slate-400">Active Signer: </span>
+                <span className="font-semibold text-slate-100">
                   {authIdentifier ?? authMethod}
                 </span>
               </div>
               <div className="flex items-center gap-2">
                 {isRegisteredOnChain && registeredCorporateRole ? (
-                  <span className="inline-flex items-center gap-1 rounded bg-emerald-50 border border-emerald-200 px-2 py-0.5 font-mono text-[10px] font-bold text-[#059669]">
+                  <span className="inline-flex items-center gap-1 rounded bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 font-mono text-[10px] font-bold text-emerald-400">
                     <CheckCircle2 className="h-3 w-3" />
                     ON-CHAIN ROLE: {registeredCorporateRole}
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-1 rounded bg-amber-50 border border-amber-200 px-2 py-0.5 font-mono text-[10px] font-bold text-amber-700">
+                  <span className="inline-flex items-center gap-1 rounded bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 font-mono text-[10px] font-bold text-amber-400">
                     UNREGISTERED ON-CHAIN
                   </span>
                 )}
               </div>
             </div>
             <div className="flex flex-wrap items-center justify-between gap-2 font-mono text-[11px]">
-              <span className="text-[#0284C7] break-all">{didPkh}</span>
+              <span className="text-cyan-400 break-all">{didPkh}</span>
               {protocolState?.connectedWalletBalances && (
-                <span className="font-semibold text-[#059669] tabular-nums">
+                <span className="font-semibold text-emerald-400 tabular-nums">
                   {protocolState.connectedWalletBalances.usdcBalance} dUSDC •{' '}
                   {protocolState.connectedWalletBalances.ethBalance} ETH
                 </span>
@@ -358,13 +358,13 @@ export function AuthConnectModal() {
 
           {/* Explicit Missing MetaMask Warning Banner with Install Link */}
           {(!hasInjectedProvider || missingMetaMask) && selectedTab === 'browser-wallet' && (
-            <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-xs text-amber-900 space-y-1.5">
-              <div className="flex items-center gap-2 font-bold text-amber-950">
-                <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0" />
+            <div className="rounded-xl border border-amber-500/30 bg-amber-950/20 px-4 py-3 text-xs text-amber-300 space-y-1.5">
+              <div className="flex items-center gap-2 font-bold text-amber-200">
+                <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0" />
                 <span>MetaMask Browser Extension (window.ethereum) Not Detected</span>
               </div>
-              <p className="text-amber-800 leading-relaxed">
-                No injected EVM wallet was found in <code className="font-mono">window.ethereum</code>.
+              <p className="text-amber-300/90 leading-relaxed">
+                No injected EVM wallet was found in <code className="font-mono text-amber-200">window.ethereum</code>.
                 Please install the official MetaMask browser extension to connect your Supplier,
                 Buyer, or Financier accounts.
               </p>
@@ -372,7 +372,7 @@ export function AuthConnectModal() {
                 href="https://metamask.io/download/"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 font-semibold text-[#0284C7] underline hover:text-[#0369A1]"
+                className="inline-flex items-center gap-1.5 font-semibold text-cyan-400 underline hover:text-cyan-300"
               >
                 <span>Install MetaMask Extension (metamask.io/download)</span>
                 <ExternalLink className="h-3.5 w-3.5" />
@@ -381,7 +381,7 @@ export function AuthConnectModal() {
           )}
 
           {errorMsg && (
-            <div className="rounded-lg border border-red-200 bg-red-50 px-3.5 py-2.5 text-xs font-medium text-[#DC2626]">
+            <div className="rounded-xl border border-red-500/30 bg-red-950/20 px-4 py-3 text-xs font-medium text-red-400">
               {errorMsg}
             </div>
           )}
@@ -389,13 +389,13 @@ export function AuthConnectModal() {
           {/* TAB 1 (PRIMARY): MetaMask / Injected EOA */}
           {selectedTab === 'browser-wallet' && (
             <div className="space-y-4">
-              <div className="rounded-lg border border-[#E2E8F0] bg-white p-4 space-y-3">
+              <div className="rounded-xl border border-slate-800/80 bg-slate-900/40 p-4 space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
-                    <h3 className="text-xs font-bold text-[#0F172A]">
+                    <h3 className="text-xs font-bold text-slate-100">
                       Step 1 — Connect or Switch MetaMask Account &amp; Network
                     </h3>
-                    <p className="text-[11px] text-[#475569]">
+                    <p className="text-[11px] text-slate-400">
                       Calls <code className="font-mono">wallet_requestPermissions</code> +{' '}
                       <code className="font-mono">eth_requestAccounts</code> +{' '}
                       <code className="font-mono">personal_sign</code> to force the MetaMask popup
@@ -406,7 +406,7 @@ export function AuthConnectModal() {
 
                 {/* Target Network Switcher */}
                 <div className="flex flex-wrap items-center gap-2 pt-1">
-                  <span className="text-[11px] font-semibold text-[#475569]">
+                  <span className="text-[11px] font-semibold text-slate-400">
                     Target Chain:
                   </span>
                   {[
@@ -418,10 +418,10 @@ export function AuthConnectModal() {
                       key={net.id}
                       type="button"
                       onClick={() => handleChainSwitch(net.id)}
-                      className={`rounded-md border px-2.5 py-1 font-mono text-[11px] font-semibold transition cursor-pointer ${
+                      className={`rounded-lg border px-2.5 py-1 font-mono text-[11px] font-semibold transition cursor-pointer ${
                         targetChainId === net.id
-                          ? 'border-[#0A2540] bg-[#0A2540] text-white'
-                          : 'border-[#CBD5E1] bg-[#F8FAFC] text-[#475569] hover:text-[#0F172A]'
+                          ? 'border-emerald-500/50 bg-emerald-500/10 text-emerald-400'
+                          : 'border-slate-800 bg-slate-950/40 text-slate-400 hover:text-white'
                       }`}
                     >
                       {net.label}
@@ -434,13 +434,13 @@ export function AuthConnectModal() {
                     type="button"
                     disabled={isBusy}
                     onClick={handleConnectOrSwitchMetaMask}
-                    className={`flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-xs font-semibold text-white disabled:opacity-50 cursor-pointer ${
+                    className={`flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-xs font-semibold disabled:opacity-50 cursor-pointer transition ${
                       isAuthenticated && activeAddress && authIdentifier?.startsWith('MetaMask (')
-                        ? 'bg-[#059669] hover:bg-[#047857]'
-                        : 'bg-[#0A2540] hover:bg-[#1E293B]'
+                        ? 'bg-emerald-500 text-slate-950 hover:bg-emerald-400 shadow-md shadow-emerald-500/10'
+                        : 'bg-emerald-500 text-slate-950 hover:bg-emerald-400'
                     }`}
                   >
-                    <Wallet className="h-4 w-4 text-[#14B8A6]" />
+                    <Wallet className="h-4 w-4" />
                     {isBusy
                       ? 'Opening MetaMask Popup...'
                       : isAuthenticated && activeAddress && authIdentifier?.startsWith('MetaMask (')
@@ -452,15 +452,15 @@ export function AuthConnectModal() {
                     type="button"
                     disabled={isBusy}
                     onClick={handleConnectOrSwitchMetaMask}
-                    className="flex items-center justify-center gap-2 rounded-lg border border-[#0A2540] bg-white px-4 py-2.5 text-xs font-semibold text-[#0A2540] hover:bg-[#F8FAFC] disabled:opacity-50 cursor-pointer"
+                    className="flex items-center justify-center gap-2 rounded-lg border border-slate-800 bg-slate-900/60 px-4 py-2.5 text-xs font-semibold text-slate-200 hover:text-white hover:border-slate-700 disabled:opacity-50 cursor-pointer transition"
                   >
-                    <RefreshCw className="h-3.5 w-3.5 text-[#0284C7]" />
+                    <RefreshCw className="h-3.5 w-3.5 text-cyan-400" />
                     Switch MetaMask Account
                   </button>
                 </div>
 
                 {lastAuthSignature && (
-                  <div className="rounded border border-emerald-200 bg-emerald-50/70 px-3 py-2 font-mono text-[10px] text-[#047857] break-all">
+                  <div className="rounded-lg border border-emerald-500/30 bg-emerald-950/20 px-3 py-2 font-mono text-[10px] text-emerald-300 break-all">
                     EIP-191 Ownership Signature Verified: {lastAuthSignature.slice(0, 34)}...
                     {lastAuthSignature.slice(-16)}
                   </div>
@@ -469,44 +469,44 @@ export function AuthConnectModal() {
 
               {/* Step 2: On-Chain Identity Resolution or Registration Form */}
               {isRegisteredOnChain && !shouldShowRegistrationForm && vleiProfile && (
-                <div className="rounded-lg border border-emerald-200 bg-emerald-50/50 p-4 space-y-2.5">
+                <div className="rounded-xl border border-emerald-500/30 bg-emerald-950/20 p-4 space-y-2.5">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <CheckCircle2 className="h-4 w-4 text-[#059669]" />
-                      <span className="text-xs font-bold text-[#0F172A]">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                      <span className="text-xs font-bold text-white">
                         Corporate Identity Verified in IdentityRegistry.sol
                       </span>
                     </div>
-                    <span className="rounded bg-[#0A2540] px-2 py-0.5 font-mono text-[10px] font-bold uppercase text-white">
+                    <span className="rounded bg-emerald-500/20 border border-emerald-500/30 px-2 py-0.5 font-mono text-[10px] font-bold uppercase text-emerald-400">
                       {registeredCorporateRole}
                     </span>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                     <div>
-                      <span className="text-[#64748B]">Legal Entity: </span>
-                      <span className="font-semibold text-[#0F172A]">
+                      <span className="text-slate-400">Legal Entity: </span>
+                      <span className="font-semibold text-slate-200">
                         {vleiProfile.legalName}
                       </span>
                     </div>
                     <div>
-                      <span className="text-[#64748B]">20-Char LEI: </span>
-                      <span className="font-mono font-bold text-[#047857]">
+                      <span className="text-slate-400">20-Char LEI: </span>
+                      <span className="font-mono font-bold text-emerald-400">
                         {vleiProfile.lei}
                       </span>
                     </div>
-                    <div className="sm:col-span-2 font-mono text-[11px] text-[#475569] break-all">
+                    <div className="sm:col-span-2 font-mono text-[11px] text-slate-400 break-all">
                       vLEI Claim Hash: {vleiProfile.vleiClaimHash}
                     </div>
                   </div>
 
                   {registrationTxHash && (
-                    <div className="font-mono text-[10px] text-[#047857] break-all">
+                    <div className="font-mono text-[10px] text-emerald-400 break-all">
                       IdentityRegistry Tx: {registrationTxHash}
                     </div>
                   )}
 
-                  <div className="flex items-center justify-between pt-2 border-t border-emerald-200/70">
+                  <div className="flex items-center justify-between pt-2 border-t border-slate-800">
                     <button
                       type="button"
                       onClick={() => {
@@ -515,14 +515,14 @@ export function AuthConnectModal() {
                         setLeiInput(vleiProfile.lei);
                         setShowEditIdentityForm(true);
                       }}
-                      className="text-[11px] font-semibold text-[#0284C7] hover:underline cursor-pointer"
+                      className="text-[11px] font-semibold text-cyan-400 hover:underline cursor-pointer"
                     >
                       Update Role / Re-Register Identity On-Chain
                     </button>
                     <button
                       type="button"
                       onClick={() => setIsAuthModalOpen(false)}
-                      className="rounded-lg bg-[#059669] px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-[#047857] cursor-pointer"
+                      className="rounded-lg bg-emerald-500 px-3.5 py-1.5 text-xs font-semibold text-slate-950 hover:bg-emerald-400 cursor-pointer"
                     >
                       Continue to {registeredCorporateRole} Workspace
                     </button>
@@ -535,7 +535,7 @@ export function AuthConnectModal() {
           {/* TAB 2: Passkey / Smart Account */}
           {selectedTab === 'webauthn-passkey' && (
             <div className="space-y-3">
-              <p className="text-xs text-[#475569]">
+              <p className="text-xs text-slate-400">
                 Sign transactions using your device&apos;s hardware Secure Enclave (Apple TouchID /
                 FaceID, Windows Hello, or YubiKey FIDO2) via RIP-7212 / ERC-4337 P256 signature
                 verification on Base.
@@ -544,9 +544,9 @@ export function AuthConnectModal() {
                 type="button"
                 disabled={isBusy}
                 onClick={handlePasskeyAuth}
-                className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#0A2540] px-4 py-2.5 text-xs font-semibold text-white hover:bg-[#1E293B] disabled:opacity-50 cursor-pointer"
+                className="flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-500 px-4 py-2.5 text-xs font-semibold text-slate-950 hover:bg-emerald-400 transition disabled:opacity-50 cursor-pointer"
               >
-                <Fingerprint className="h-4 w-4 text-[#14B8A6]" />
+                <Fingerprint className="h-4 w-4" />
                 {isBusy
                   ? 'Verifying Hardware Passkey...'
                   : 'Authenticate with Biometric Passkey (WebAuthn)'}
@@ -557,25 +557,25 @@ export function AuthConnectModal() {
           {/* TAB 3: Email OTP */}
           {selectedTab === 'email-otp' && (
             <div className="space-y-3">
-              <p className="text-xs text-[#475569]">
+              <p className="text-xs text-slate-400">
                 Authenticate with your corporate email address to derive a deterministic ERC-4337
                 Smart Account on Base L2.
               </p>
               <div>
-                <label className="block text-xs font-semibold text-[#0F172A] mb-1">
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
                   Corporate Treasury Email
                 </label>
                 <input
                   type="email"
                   value={emailInput}
                   onChange={(e) => setEmailInput(e.target.value)}
-                  className="w-full rounded-lg border border-[#CBD5E1] bg-white px-3 py-2 text-sm text-[#0F172A]"
+                  className="w-full rounded-lg border border-slate-800 bg-[#06090F] px-3 py-2 text-xs text-white focus:border-emerald-500 focus:outline-hidden"
                   placeholder="cfo@enterprise.com"
                 />
               </div>
               {otpSent && (
                 <div>
-                  <label className="block text-xs font-semibold text-[#0F172A] mb-1">
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
                     6-Digit Security Code (Dispatched to {emailInput})
                   </label>
                   <input
@@ -583,7 +583,7 @@ export function AuthConnectModal() {
                     value={otpCode}
                     onChange={(e) => setOtpCode(e.target.value)}
                     placeholder="Enter 6-digit OTP"
-                    className="w-full rounded-lg border border-[#CBD5E1] bg-white px-3 py-2 font-mono text-sm text-[#0F172A]"
+                    className="w-full rounded-lg border border-slate-800 bg-[#06090F] px-3 py-2 font-mono text-xs text-white focus:border-emerald-500 focus:outline-hidden"
                   />
                 </div>
               )}
@@ -591,7 +591,7 @@ export function AuthConnectModal() {
                 type="button"
                 disabled={isBusy || !emailInput.trim()}
                 onClick={() => handleOtpSubmit('email-otp')}
-                className="w-full rounded-lg bg-[#0A2540] px-4 py-2.5 text-xs font-semibold text-white hover:bg-[#1E293B] disabled:opacity-50 cursor-pointer"
+                className="w-full rounded-lg bg-emerald-500 px-4 py-2.5 text-xs font-semibold text-slate-950 hover:bg-emerald-400 transition disabled:opacity-50 cursor-pointer"
               >
                 {isBusy
                   ? 'Provisioning ERC-4337 Smart Account...'
@@ -605,25 +605,25 @@ export function AuthConnectModal() {
           {/* TAB 4: SMS OTP */}
           {selectedTab === 'sms-otp' && (
             <div className="space-y-3">
-              <p className="text-xs text-[#475569]">
+              <p className="text-xs text-slate-400">
                 Authenticate via mobile SMS verification for SME exporter accounts. Automatically
                 provisions an ERC-4337 Smart Account on Base L2.
               </p>
               <div>
-                <label className="block text-xs font-semibold text-[#0F172A] mb-1">
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
                   Authorized Mobile Number (E.164)
                 </label>
                 <input
                   type="tel"
                   value={phoneInput}
                   onChange={(e) => setPhoneInput(e.target.value)}
-                  className="w-full rounded-lg border border-[#CBD5E1] bg-white px-3 py-2 font-mono text-sm text-[#0F172A]"
+                  className="w-full rounded-lg border border-slate-800 bg-[#06090F] px-3 py-2 font-mono text-xs text-white focus:border-emerald-500 focus:outline-hidden"
                   placeholder="+1 415 555 0199"
                 />
               </div>
               {otpSent && (
                 <div>
-                  <label className="block text-xs font-semibold text-[#0F172A] mb-1">
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
                     SMS Verification Code
                   </label>
                   <input
@@ -631,7 +631,7 @@ export function AuthConnectModal() {
                     value={otpCode}
                     onChange={(e) => setOtpCode(e.target.value)}
                     placeholder="Enter 6-digit SMS code"
-                    className="w-full rounded-lg border border-[#CBD5E1] bg-white px-3 py-2 font-mono text-sm text-[#0F172A]"
+                    className="w-full rounded-lg border border-slate-800 bg-[#06090F] px-3 py-2 font-mono text-xs text-white focus:border-emerald-500 focus:outline-hidden"
                   />
                 </div>
               )}
@@ -639,7 +639,7 @@ export function AuthConnectModal() {
                 type="button"
                 disabled={isBusy || !phoneInput.trim()}
                 onClick={() => handleOtpSubmit('sms-otp')}
-                className="w-full rounded-lg bg-[#0A2540] px-4 py-2.5 text-xs font-semibold text-white hover:bg-[#1E293B] disabled:opacity-50 cursor-pointer"
+                className="w-full rounded-lg bg-emerald-500 px-4 py-2.5 text-xs font-semibold text-slate-950 hover:bg-emerald-400 transition disabled:opacity-50 cursor-pointer"
               >
                 {isBusy
                   ? 'Provisioning Smart Account...'
@@ -650,21 +650,21 @@ export function AuthConnectModal() {
             </div>
           )}
 
-          {/* Dynamic On-Chain Corporate Identity Registration Form (shown whenever connected address is not registered in IdentityRegistry.sol) */}
+          {/* Dynamic On-Chain Corporate Identity Registration Form */}
           {shouldShowRegistrationForm && (
             <form
               onSubmit={handleRegisterIdentitySubmit}
-              className="rounded-xl border border-[#CBD5E1] bg-[#F8FAFC] p-4 space-y-3"
+              className="rounded-xl border border-slate-800/80 bg-slate-900/50 p-4 space-y-3"
             >
-              <div className="flex items-center justify-between border-b border-[#E2E8F0] pb-2.5">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
                 <div className="flex items-center gap-2">
-                  <Building2 className="h-4 w-4 text-[#0284C7]" />
+                  <Building2 className="h-4 w-4 text-cyan-400" />
                   <div>
-                    <h3 className="text-xs font-bold text-[#0F172A]">
+                    <h3 className="text-xs font-bold text-white">
                       Register Corporate Identity On-Chain (IdentityRegistry.sol)
                     </h3>
-                    <p className="text-[11px] text-[#475569]">
-                      Wallet <code className="font-mono">{activeAddress?.slice(0, 8)}...{activeAddress?.slice(-4)}</code>{' '}
+                    <p className="text-[11px] text-slate-400">
+                      Wallet <code className="font-mono text-emerald-400">{activeAddress?.slice(0, 8)}...{activeAddress?.slice(-4)}</code>{' '}
                       requires on-chain GLEIF vLEI &amp; Role binding on Base.
                     </p>
                   </div>
@@ -673,7 +673,7 @@ export function AuthConnectModal() {
                   <button
                     type="button"
                     onClick={() => setShowEditIdentityForm(false)}
-                    className="text-[11px] font-semibold text-[#64748B] hover:text-[#0F172A]"
+                    className="text-[11px] font-semibold text-slate-400 hover:text-white"
                   >
                     Cancel
                   </button>
@@ -682,7 +682,7 @@ export function AuthConnectModal() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="sm:col-span-2">
-                  <label className="block text-xs font-semibold text-[#0F172A] mb-1">
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
                     Legal Entity Name
                   </label>
                   <input
@@ -691,12 +691,12 @@ export function AuthConnectModal() {
                     value={legalNameInput}
                     onChange={(e) => setLegalNameInput(e.target.value)}
                     placeholder="Enter your corporate legal entity name"
-                    className="w-full rounded-lg border border-[#CBD5E1] bg-white px-3 py-2 text-xs text-[#0F172A]"
+                    className="w-full rounded-lg border border-slate-800 bg-[#06090F] px-3 py-2 text-xs text-white focus:border-emerald-500 focus:outline-hidden"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-[#0F172A] mb-1">
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
                     Institutional Role
                   </label>
                   <select
@@ -704,7 +704,7 @@ export function AuthConnectModal() {
                     onChange={(e) =>
                       setSelectedRole(e.target.value as CorporateIdentityRole)
                     }
-                    className="w-full rounded-lg border border-[#CBD5E1] bg-white px-3 py-2 text-xs font-semibold text-[#0F172A]"
+                    className="w-full rounded-lg border border-slate-800 bg-[#06090F] px-3 py-2 text-xs font-semibold text-white focus:border-emerald-500 focus:outline-hidden"
                   >
                     <option value="SUPPLIER">SUPPLIER (Exporter / Originator)</option>
                     <option value="BUYER">BUYER (Anchor Obligor / EAS Co-Signer)</option>
@@ -714,13 +714,13 @@ export function AuthConnectModal() {
 
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <label className="block text-xs font-semibold text-[#0F172A]">
+                    <label className="block text-xs font-semibold text-slate-300">
                       20-Character GLEIF LEI
                     </label>
                     <button
                       type="button"
                       onClick={handleGenerateLei}
-                      className="inline-flex items-center gap-1 text-[10px] font-semibold text-[#0284C7] hover:underline cursor-pointer"
+                      className="inline-flex items-center gap-1 text-[10px] font-semibold text-cyan-400 hover:underline cursor-pointer"
                     >
                       <Sparkles className="h-3 w-3" />
                       Generate 20-Char LEI
@@ -734,43 +734,43 @@ export function AuthConnectModal() {
                     value={leiInput}
                     onChange={(e) => setLeiInput(e.target.value.toUpperCase())}
                     placeholder="20-char ISO 17442 LEI"
-                    className="w-full rounded-lg border border-[#CBD5E1] bg-white px-3 py-2 font-mono text-xs text-[#0F172A]"
+                    className="w-full rounded-lg border border-slate-800 bg-[#06090F] px-3 py-2 font-mono text-xs text-white focus:border-emerald-500 focus:outline-hidden"
                   />
                 </div>
 
                 <div className="sm:col-span-2">
-                  <label className="block text-xs font-semibold text-[#0F172A] mb-1">
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
                     Jurisdiction &amp; Corridor
                   </label>
                   <input
                     type="text"
                     value={jurisdictionInput}
                     onChange={(e) => setJurisdictionInput(e.target.value)}
-                    className="w-full rounded-lg border border-[#CBD5E1] bg-white px-3 py-2 text-xs text-[#0F172A]"
+                    className="w-full rounded-lg border border-slate-800 bg-[#06090F] px-3 py-2 text-xs text-white focus:border-emerald-500 focus:outline-hidden"
                   />
                 </div>
               </div>
 
-              <label className="flex items-center gap-2 text-xs text-[#334155] cursor-pointer">
+              <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={mintInitialFaucet}
                   onChange={(e) => setMintInitialFaucet(e.target.checked)}
-                  className="h-4 w-4 accent-[#0A2540]"
+                  className="h-4 w-4 accent-emerald-500"
                 />
                 <span>
-                  Also mint initial test <code className="font-mono font-bold">250,000 dUSDC</code>{' '}
-                  &amp; <code className="font-mono font-bold">10 ETH</code> via{' '}
-                  <code className="font-mono">DiptosTestUSDC.sol</code> Faucet
+                  Also mint initial test <code className="font-mono font-bold text-emerald-400">250,000 dUSDC</code>{' '}
+                  &amp; <code className="font-mono font-bold text-emerald-400">10 ETH</code> via{' '}
+                  <code className="font-mono text-cyan-400">DiptosTestUSDC.sol</code> Faucet
                 </span>
               </label>
 
               <button
                 type="submit"
                 disabled={isBusy || !legalNameInput.trim() || leiInput.trim().length !== 20}
-                className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#0A2540] px-4 py-2.5 text-xs font-semibold text-white hover:bg-[#1E293B] disabled:opacity-50 cursor-pointer"
+                className="flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-500 px-4 py-2.5 text-xs font-semibold text-slate-950 hover:bg-emerald-400 transition disabled:opacity-50 cursor-pointer shadow-lg shadow-emerald-500/10"
               >
-                <ShieldCheck className="h-4 w-4 text-[#14B8A6]" />
+                <ShieldCheck className="h-4 w-4" />
                 {isBusy
                   ? 'Confirming writeContractAsync in MetaMask...'
                   : 'Register DID on Base'}

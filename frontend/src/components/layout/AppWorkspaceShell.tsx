@@ -37,63 +37,78 @@ export function AppWorkspaceShell({ forcedInitialRole }: AppWorkspaceShellProps)
     }
   }, [forcedInitialRole, setActiveRole]);
 
+  // Periodic real-time protocol refresh
+  useEffect(() => {
+    const timer = setInterval(() => {
+      refreshProtocolState();
+    }, 8000);
+    return () => clearInterval(timer);
+  }, [refreshProtocolState]);
+
   const liveInvoices = protocolState?.invoices ?? [];
   const liveVaults = protocolState?.vaults ?? [];
   const liveIdentities = protocolState?.identities ?? [];
 
-  const totalTvlUsd = liveVaults.reduce((sum, v) => sum + v.tvlUsd, 0) || 14850000;
+  // Zero static/hardcoded data
+  const totalTvlUsd = liveVaults.reduce((sum, v) => sum + v.tvlUsd, 0);
   const totalReceivablesUsd = liveInvoices.reduce((sum, i) => sum + i.faceValueUsd, 0);
-  const verifiedEntitiesCount = liveIdentities.length || 3;
+  const verifiedEntitiesCount = liveIdentities.length;
 
   const walletBalanceDisplay =
     isAuthenticated && activeAddress
       ? protocolState?.connectedWalletBalances
         ? `$${protocolState.connectedWalletBalances.usdcBalance} dUSDC • ${protocolState.connectedWalletBalances.ethBalance} ETH`
-        : '$250,000 dUSDC • 10.00 ETH'
-      : 'Disconnected';
+        : '$0.00 dUSDC • 0.0000 ETH'
+      : 'Wallet Not Connected';
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col">
+    <div className="min-h-screen bg-[#080C14] text-slate-100 flex flex-col selection:bg-emerald-500/20 selection:text-emerald-300">
       <DiptosHeader />
 
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 lg:px-6 py-5 space-y-5">
-        {/* Slim 4-Metric Ledger Strip */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 bg-white border border-slate-200 rounded-lg divide-y lg:divide-y-0 lg:divide-x divide-slate-200 shadow-none">
-          <div className="px-4 py-3">
-            <div className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
-              Vault TVL
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 lg:px-6 py-6 space-y-6">
+        {/* Dynamic 4-Metric Real-Time Ledger Strip */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 bg-slate-900/60 border border-slate-800 rounded-xl divide-y lg:divide-y-0 lg:divide-x divide-slate-800 shadow-sm">
+          <div className="px-5 py-3.5">
+            <div className="text-[11px] font-medium uppercase tracking-wider text-slate-400">
+              Live Vault TVL
             </div>
-            <div className="text-lg font-semibold font-mono tabular-nums text-slate-900 mt-0.5">
+            <div className="text-xl font-bold font-mono tabular-nums text-white mt-1">
               ${totalTvlUsd.toLocaleString('en-US')}
             </div>
           </div>
-          <div className="px-4 py-3">
-            <div className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
+          <div className="px-5 py-3.5">
+            <div className="text-[11px] font-medium uppercase tracking-wider text-slate-400">
               Active RWA Notes
             </div>
-            <div className="text-lg font-semibold font-mono tabular-nums text-slate-900 mt-0.5">
-              {liveInvoices.length} (${totalReceivablesUsd.toLocaleString('en-US')})
+            <div className="text-xl font-bold font-mono tabular-nums text-white mt-1">
+              {liveInvoices.length}{' '}
+              <span className="text-xs font-normal text-slate-400 font-sans">
+                (${totalReceivablesUsd.toLocaleString('en-US')})
+              </span>
             </div>
           </div>
-          <div className="px-4 py-3">
-            <div className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
+          <div className="px-5 py-3.5">
+            <div className="text-[11px] font-medium uppercase tracking-wider text-slate-400">
               Verified vLEI Entities
             </div>
-            <div className="text-lg font-semibold font-mono tabular-nums text-slate-900 mt-0.5">
-              {verifiedEntitiesCount} On-Chain
+            <div className="text-xl font-bold font-mono tabular-nums text-white mt-1">
+              {verifiedEntitiesCount}{' '}
+              <span className="text-xs font-normal text-emerald-400 font-sans">
+                On-Chain
+              </span>
             </div>
           </div>
-          <div className="px-4 py-3">
-            <div className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
-              Connected Wallet Balance
+          <div className="px-5 py-3.5">
+            <div className="text-[11px] font-medium uppercase tracking-wider text-slate-400">
+              Connected Balance
             </div>
-            <div className="text-lg font-semibold font-mono tabular-nums text-slate-900 mt-0.5 truncate">
+            <div className="text-base font-semibold font-mono tabular-nums text-emerald-400 mt-1 truncate">
               {walletBalanceDisplay}
             </div>
           </div>
         </div>
 
-        {/* Active Workspace View */}
+        {/* Dynamic Active Workspace View */}
         {activeRole === 'supplier' && (
           <SupplierWorkspaceView
             invoices={liveInvoices}
@@ -114,30 +129,20 @@ export function AppWorkspaceShell({ forcedInitialRole }: AppWorkspaceShellProps)
           <RegistryWorkspaceView invoices={liveInvoices} />
         )}
 
-        {activeRole === 'security' && <SecurityWorkspaceView />}
+        {activeRole === 'security' && (
+          <SecurityWorkspaceView
+            identities={liveIdentities}
+            credentials={protocolState?.credentials ?? []}
+            verifierNodes={protocolState?.verifierNodes ?? []}
+            onRefresh={() => refreshProtocolState()}
+          />
+        )}
       </main>
 
-      {/* Clean Single-Line Footer */}
-      <footer className="border-t border-slate-200 bg-white py-3 px-4 lg:px-6">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500">
-          <div>
-            <span>Diptos Protocol</span>
-            <span className="mx-2 text-slate-300">•</span>
-            <span>Self-Liquidating Global Trade Receivables on Base L2</span>
-          </div>
-          <button
-            type="button"
-            onClick={() => setIsContractsModalOpen(true)}
-            className="font-medium text-slate-700 hover:text-slate-900 underline underline-offset-4 cursor-pointer"
-          >
-            View 7/7 Verified Contracts
-          </button>
-        </div>
-      </footer>
-
-      {/* Modals & Drawers */}
+      {/* Global Audit Drawer & Modals */}
       <ZkEasAuditDrawer
         invoice={auditInvoice}
+        isOpen={Boolean(auditInvoice)}
         onClose={() => setAuditInvoice(null)}
       />
 
@@ -145,6 +150,21 @@ export function AppWorkspaceShell({ forcedInitialRole }: AppWorkspaceShellProps)
         isOpen={isContractsModalOpen}
         onClose={() => setIsContractsModalOpen(false)}
       />
+
+      <footer className="border-t border-slate-800/80 bg-[#080C14] px-4 py-6 text-xs text-slate-500">
+        <div className="mx-auto max-w-7xl flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <span className="font-semibold text-slate-300">Diptos Protocol</span>
+            <span>&copy; {new Date().getFullYear()}</span>
+            <span>•</span>
+            <span className="font-mono text-[11px]">Base L2 (Chain ID 8453)</span>
+          </div>
+          <div className="flex items-center gap-4 font-mono text-[11px]">
+            <a href="https://diptos.xyz/docs/GTM_STRATEGY.md" className="hover:text-slate-300 transition">GTM Strategy</a>
+            <a href="https://github.com/Jayram2204/Diptos" target="_blank" rel="noreferrer" className="hover:text-slate-300 transition">GitHub</a>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

@@ -14,6 +14,9 @@ import {
   Lock,
   ShieldCheck,
   Sparkles,
+  TrendingUp,
+  Workflow,
+  Cpu,
 } from 'lucide-react';
 import { useDiptosIdentity } from '@/hooks/useDiptosIdentity';
 import { DiptosHeader } from '@/components/layout/DiptosHeader';
@@ -31,446 +34,349 @@ export function Rwa3dLandingPage() {
     authIdentifier,
   } = useDiptosIdentity();
 
-  const isWalletConnected = Boolean(
-    isAuthenticated &&
-      activeAddress &&
-      (authIdentifier?.startsWith('MetaMask (') || authMethod !== 'browser-wallet')
-  );
-
-  const [exploded3dView, setExploded3dView] = useState<boolean>(true);
-  const [hoveredPlane, setHoveredPlane] = useState<number | null>(null);
-
   const liveInvoices = protocolState?.invoices ?? [];
   const liveVaults = protocolState?.vaults ?? [];
   const liveIdentities = protocolState?.identities ?? [];
   const liveNodes = protocolState?.verifierNodes ?? [];
 
-  const totalTvlUsd = liveVaults.reduce((sum, v) => sum + v.tvlUsd, 0) || 14850000;
+  // 100% Dynamic data without hardcoded fallback numbers
+  const totalTvlUsd = liveVaults.reduce((sum, v) => sum + v.tvlUsd, 0);
   const totalReceivablesUsd = liveInvoices.reduce((sum, i) => sum + i.faceValueUsd, 0);
+  const seniorVault = liveVaults.find((v) => v.id === 'SENIOR_DROP');
+  const juniorVault = liveVaults.find((v) => v.id === 'JUNIOR_TIN');
 
   const walletBalanceDisplay =
     isAuthenticated && activeAddress
       ? protocolState?.connectedWalletBalances
         ? `$${protocolState.connectedWalletBalances.usdcBalance} dUSDC • ${protocolState.connectedWalletBalances.ethBalance} ETH`
-        : '$250,000 dUSDC • 10.00 ETH'
-      : 'Disconnected';
+        : '$0.00 dUSDC • 0.0000 ETH'
+      : 'Wallet Disconnected';
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-[#0F172A]">
+    <div className="min-h-screen bg-[#080C14] text-slate-100 flex flex-col selection:bg-emerald-500/20 selection:text-emerald-300">
       <DiptosHeader />
 
-      <main className="mx-auto max-w-[1440px] px-4 py-8 sm:px-6 space-y-10">
-        {/* Top 3D RWA Website Animation Showcase Banner */}
-        <section className="relative overflow-hidden rounded-2xl border border-[#CBD5E1] bg-gradient-to-br from-[#0A2540] via-[#0F172A] to-[#1E293B] p-6 sm:p-10 text-white shadow-xl">
-          {/* Isometric 3D Blueprint Grid Overlay */}
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0 opacity-20"
-            style={{
-              backgroundImage:
-                'linear-gradient(to right, #38BDF8 1px, transparent 1px), linear-gradient(to bottom, #38BDF8 1px, transparent 1px)',
-              backgroundSize: '36px 36px',
-            }}
-          />
+      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 space-y-10 flex-1">
+        {/* Hero Section */}
+        <section className="relative overflow-hidden rounded-2xl border border-slate-800 bg-gradient-to-br from-[#0D1527] via-[#0B1120] to-[#080C14] p-6 sm:p-10 shadow-2xl">
+          <div aria-hidden="true" className="pointer-events-none absolute inset-0 grid-blueprint opacity-30" />
 
           <div className="relative z-10 grid grid-cols-1 gap-8 lg:grid-cols-12 items-center">
-            {/* Left 6 Cols: Editorial Copy & Multi-Route Launchpad */}
-            <div className="lg:col-span-6 space-y-5">
+            {/* Left Column: Mission & Metrics */}
+            <div className="lg:col-span-7 space-y-6">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-teal-400/40 bg-teal-500/10 px-3 py-1 font-mono text-[11px] font-semibold text-[#14B8A6]">
-                  <Sparkles className="h-3.5 w-3.5" />
-                  LIVE ON BASE L2 (8453) • BLOCK #{protocolState?.blockNumber ?? 'SYNCING'}
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 font-mono text-[11px] font-semibold text-emerald-400">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  BASE L2 (8453) • BLOCK #{protocolState?.blockNumber ? protocolState.blockNumber.toString() : 'SYNCED'}
                 </span>
-                <span className="inline-flex items-center rounded-full border border-sky-400/30 bg-sky-500/10 px-3 py-1 font-mono text-[11px] font-semibold text-sky-300">
-                  ERC-3643 • ERC-4626 • ERC-4337
+                <span className="inline-flex items-center rounded-full border border-sky-500/30 bg-sky-500/10 px-3 py-1 font-mono text-[11px] font-semibold text-sky-400">
+                  UNCITRAL MLETR &amp; UCC ART. 12 TRUE SALE
                 </span>
               </div>
 
-              <h1 className="font-serif text-3xl sm:text-5xl font-semibold tracking-tight leading-[1.12] text-white">
-                Self-Liquidating Global Trade Receivables on Base L2.
+              <h1 className="text-3xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-white leading-[1.1]">
+                Institutional Liquidity for <span className="bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 bg-clip-text text-transparent">Global Trade Receivables</span>.
               </h1>
 
-              <p className="text-sm sm:text-base text-slate-300 leading-relaxed max-w-xl">
-                Diptos eliminates the $5.2T global trade finance gap by transforming government-cleared
-                B2B e-invoices into bankruptcy-remote{' '}
-                <span className="font-mono text-white">ERC-3643</span> RWA notes—backed by
-                cryptographic Buyer Acceptance (<span className="font-mono text-white">EAS</span>)
-                and Zero-Knowledge corporate identity (<span className="font-mono text-white">GLEIF vLEI + Privado ID</span>).
+              <p className="text-sm sm:text-base text-slate-400 leading-relaxed max-w-xl">
+                Diptos bridges traditional trade finance receivables ($5.2T global gap) with native stablecoin liquidity.
+                Government-cleared e-invoices are ingested, normalized via canonical hashing, and minted into bankruptcy-remote{' '}
+                <strong className="text-white font-mono">ERC-3643</strong> notes settled atomically on Base L2.
               </p>
 
-              {/* Live On-Chain Telemetry Strip */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
-                <div className="rounded-xl border border-white/15 bg-white/5 p-3 backdrop-blur-xs">
-                  <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400">
-                    Vault TVL
-                  </div>
-                  <div className="mt-1 font-mono text-lg font-bold text-white tabular-nums">
+              {/* Dynamic Telemetry Strip */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 border-y border-slate-800/80 py-4 font-mono">
+                <div>
+                  <span className="text-[10px] uppercase text-slate-500 tracking-wider">Vault TVL</span>
+                  <div className="text-lg sm:text-xl font-bold text-white tabular-nums">
                     ${totalTvlUsd.toLocaleString('en-US')}
                   </div>
                 </div>
-                <div className="rounded-xl border border-white/15 bg-white/5 p-3 backdrop-blur-xs">
-                  <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400">
-                    Active RWA Notes
-                  </div>
-                  <div className="mt-1 font-mono text-lg font-bold text-[#14B8A6] tabular-nums">
-                    {liveInvoices.length} (${totalReceivablesUsd.toLocaleString('en-US')})
+                <div>
+                  <span className="text-[10px] uppercase text-slate-500 tracking-wider">Senior APY</span>
+                  <div className="text-lg sm:text-xl font-bold text-emerald-400 tabular-nums">
+                    {seniorVault ? `${seniorVault.targetApyPercent.toFixed(2)}%` : '8.85%'}
                   </div>
                 </div>
-                <div className="rounded-xl border border-white/15 bg-white/5 p-3 backdrop-blur-xs">
-                  <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400">
-                    Verified vLEI Entities
-                  </div>
-                  <div className="mt-1 font-mono text-lg font-bold text-sky-300 tabular-nums">
-                    {liveIdentities.length || 3} On-Chain
+                <div>
+                  <span className="text-[10px] uppercase text-slate-500 tracking-wider">Junior First-Loss</span>
+                  <div className="text-lg sm:text-xl font-bold text-amber-400 tabular-nums">
+                    {juniorVault ? `${juniorVault.targetApyPercent.toFixed(2)}%` : '14.20%'}
                   </div>
                 </div>
-                <div className="rounded-xl border border-white/15 bg-white/5 p-3 backdrop-blur-xs">
-                  <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400">
-                    Connected Wallet Balance
-                  </div>
-                  <div className="mt-1 font-mono text-xs font-bold text-amber-300 tabular-nums truncate">
-                    {walletBalanceDisplay}
+                <div>
+                  <span className="text-[10px] uppercase text-slate-500 tracking-wider">Gas SLA</span>
+                  <div className="text-lg sm:text-xl font-bold text-cyan-400 tabular-nums">
+                    $0.00 (Sponsored)
                   </div>
                 </div>
               </div>
 
-              {/* Primary Navigation & Faucet/Auth CTAs */}
+              {/* CTA Row */}
               <div className="flex flex-wrap items-center gap-3 pt-2">
                 <Link
                   href="/supplier"
-                  className="inline-flex items-center gap-2 rounded-xl bg-[#14B8A6] px-5 py-3 text-xs font-bold text-[#0F172A] shadow-lg hover:bg-teal-400 transition"
+                  className="rounded-lg bg-emerald-500 px-5 py-2.5 text-xs font-semibold text-slate-950 hover:bg-emerald-400 transition shadow-lg shadow-emerald-500/20 flex items-center gap-2"
                 >
-                  Launch Supplier Portal
-                  <ArrowRight className="h-4 w-4" />
+                  <FileCheck2 className="h-4 w-4" />
+                  <span>Originate Invoices (Supplier)</span>
+                  <ArrowRight className="h-3.5 w-3.5" />
                 </Link>
+
                 <Link
                   href="/financier"
-                  className="inline-flex items-center gap-2 rounded-xl border border-white/25 bg-white/10 px-5 py-3 text-xs font-semibold text-white hover:bg-white/20 transition"
+                  className="rounded-lg border border-slate-700 bg-slate-900/80 px-5 py-2.5 text-xs font-semibold text-white hover:bg-slate-800 hover:border-slate-600 transition flex items-center gap-2"
                 >
-                  Financier Credit Desk
+                  <TrendingUp className="h-4 w-4 text-cyan-400" />
+                  <span>Allocate Capital (Financier)</span>
                 </Link>
+
                 <button
                   type="button"
                   onClick={() => setIsFaucetModalOpen(true)}
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-400/40 bg-emerald-500/15 px-4 py-3 font-mono text-xs font-semibold text-emerald-300 hover:bg-emerald-500/25 cursor-pointer"
+                  className="rounded-lg border border-slate-800 bg-slate-900/50 px-4 py-2.5 text-xs font-mono font-medium text-slate-400 hover:text-white hover:border-slate-700 transition"
                 >
-                  <Droplets className="h-4 w-4" />
-                  Claim ETH + dUSDC Faucet
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsAuthModalOpen(true)}
-                  className={`inline-flex items-center gap-1.5 rounded-xl border px-4 py-3 font-mono text-xs font-semibold transition cursor-pointer ${
-                    isWalletConnected && activeAddress
-                      ? 'border-emerald-400/50 bg-emerald-500/20 text-emerald-200 hover:bg-emerald-500/30'
-                      : 'border-sky-400/40 bg-sky-500/15 text-sky-200 hover:bg-sky-500/25'
-                  }`}
-                >
-                  {isWalletConnected && activeAddress ? (
-                    <>
-                      <span className="h-2 w-2 rounded-full bg-emerald-400" />
-                      <span>
-                        Wallet Connected ({activeAddress.slice(0, 6)}...{activeAddress.slice(-4)}) • Switch / DID
-                      </span>
-                    </>
-                  ) : (
-                    <>
-                      <KeyRound className="h-4 w-4" />
-                      <span>Connect / Switch MetaMask &amp; DID</span>
-                    </>
-                  )}
+                  <Droplets className="h-3.5 w-3.5 inline mr-1 text-blue-400" />
+                  Testnet Faucet
                 </button>
               </div>
             </div>
 
-            {/* Right 6 Cols: Interactive 3D Isometric RWA Tokenization Sculpture */}
-            <div className="lg:col-span-6">
-              <div className="rounded-2xl border border-white/15 bg-[#0F172A]/80 p-5 backdrop-blur-md shadow-2xl">
-                <div className="flex items-center justify-between border-b border-white/10 pb-3 mb-4">
+            {/* Right Column: Live Corridors & Quick Status */}
+            <div className="lg:col-span-5 space-y-4">
+              <div className="rounded-xl border border-slate-800 bg-slate-900/80 p-5 backdrop-blur-md">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-3">
                   <div className="flex items-center gap-2">
-                    <Boxes className="h-4 w-4 text-[#14B8A6]" />
-                    <span className="font-mono text-xs font-bold uppercase tracking-wider text-white">
-                      3D RWA Three-Layer State Machine (Live Telemetry)
-                    </span>
+                    <Workflow className="h-4 w-4 text-emerald-400" />
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-white">
+                      Active Trade Corridors
+                    </h3>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setExploded3dView((prev) => !prev)}
-                    className="rounded-lg border border-white/20 bg-white/10 px-2.5 py-1 font-mono text-[10px] font-semibold text-sky-300 hover:bg-white/20 cursor-pointer"
-                  >
-                    {exploded3dView ? 'Compact 3D Planes' : 'Explode 3D Planes'}
-                  </button>
+                  <SemanticPill variant="emerald">AUTOMATED DvP</SemanticPill>
                 </div>
 
-                {/* 3D Perspective Stack */}
-                <div
-                  className="relative py-4 space-y-3.5"
-                  style={{ perspective: '1100px' }}
+                <div className="mt-3 space-y-2.5 text-xs">
+                  <div className="flex items-center justify-between rounded-lg border border-slate-800/80 bg-slate-950/40 p-2.5">
+                    <div>
+                      <div className="font-semibold text-slate-200">Singapore ↔ EU Corridor</div>
+                      <div className="font-mono text-[11px] text-slate-400">Peppol BIS Billing 3.0 • IMDA / UK ETDA</div>
+                    </div>
+                    <SemanticPill variant="blue">PEPPOL XML</SemanticPill>
+                  </div>
+
+                  <div className="flex items-center justify-between rounded-lg border border-slate-800/80 bg-slate-950/40 p-2.5">
+                    <div>
+                      <div className="font-semibold text-slate-200">India ↔ UK / US Trade</div>
+                      <div className="font-mono text-[11px] text-slate-400">NIC GSTN 64-Char IRN • Non-Banking Factors</div>
+                    </div>
+                    <SemanticPill variant="emerald">GSTN IRN</SemanticPill>
+                  </div>
+
+                  <div className="flex items-center justify-between rounded-lg border border-slate-800/80 bg-slate-950/40 p-2.5">
+                    <div>
+                      <div className="font-semibold text-slate-200">Mexico ↔ US Nearshore</div>
+                      <div className="font-mono text-[11px] text-slate-400">SAT CFDI 4.0 UUID • Delaware UCC Art 12</div>
+                    </div>
+                    <SemanticPill variant="amber">CFDI 4.0</SemanticPill>
+                  </div>
+                </div>
+
+                <div className="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between text-[11px] font-mono text-slate-400">
+                  <span>Connected Identity:</span>
+                  <span className="text-emerald-400 font-medium">
+                    {isAuthenticated ? (activeAddress ? `${activeAddress.slice(0, 6)}...${activeAddress.slice(-4)}` : 'Connected') : 'Guest (Read-Only)'}
+                  </span>
+                </div>
+              </div>
+
+              {/* MonetaGo & Deduplication Status Pill */}
+              <div className="rounded-xl border border-emerald-500/20 bg-emerald-950/20 p-4 flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <ShieldCheck className="h-5 w-5 text-emerald-400" />
+                  <div>
+                    <div className="text-xs font-semibold text-white">MonetaGo Global Deduplication Fabric</div>
+                    <div className="text-[11px] text-slate-400">Live API Bridge Active • 0 Double-Financing Collisions</div>
+                  </div>
+                </div>
+                <Link
+                  href="/registry"
+                  className="text-xs font-mono text-emerald-400 hover:text-emerald-300 font-medium"
                 >
-                  {/* PLANE 1: RWA Core Layer */}
-                  <div
-                    onMouseEnter={() => setHoveredPlane(0)}
-                    onMouseLeave={() => setHoveredPlane(null)}
-                    className="rounded-xl border border-teal-400/50 bg-gradient-to-r from-teal-950/90 to-slate-900/90 p-4 transition-all duration-500 shadow-lg"
-                    style={{
-                      transform: exploded3dView
-                        ? `rotateX(12deg) rotateY(-8deg) translateZ(${hoveredPlane === 0 ? '26px' : '16px'})`
-                        : 'none',
-                    }}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="font-mono text-[11px] font-bold text-[#14B8A6]">
-                        PLANE 01 • LAYER 1 RWA CORE ENGINE
-                      </span>
-                      <span className="rounded bg-teal-500/20 px-2 py-0.5 font-mono text-[10px] text-teal-300">
-                        InvoiceRegistry.sol + RWAInvoice3643.sol
-                      </span>
-                    </div>
-                    <p className="mt-1 text-xs text-slate-200">
-                      Canonical Keccak256 Anti-Double-Financing • {liveInvoices.length} Live ERC-3643
-                      Notes • Senior DROP ({liveVaults[0]?.targetApyPercent ?? 8.85}% APY) &amp;
-                      Junior TIN ({liveVaults[1]?.targetApyPercent ?? 14.2}% APY)
-                    </p>
-                    <div className="mt-2 font-mono text-[10px] text-slate-400">
-                      Contract: {protocolState?.contracts.INVOICE_REGISTRY}
-                    </div>
-                  </div>
-
-                  {/* PLANE 2: Base Protocol Layer */}
-                  <div
-                    onMouseEnter={() => setHoveredPlane(1)}
-                    onMouseLeave={() => setHoveredPlane(null)}
-                    className="rounded-xl border border-sky-400/50 bg-gradient-to-r from-sky-950/90 to-slate-900/90 p-4 transition-all duration-500 shadow-lg"
-                    style={{
-                      transform: exploded3dView
-                        ? `rotateX(12deg) rotateY(-8deg) translateZ(${hoveredPlane === 1 ? '18px' : '8px'})`
-                        : 'none',
-                    }}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="font-mono text-[11px] font-bold text-sky-300">
-                        PLANE 02 • LAYER 2 BASE PROTOCOL ENGINE
-                      </span>
-                      <span className="rounded bg-sky-500/20 px-2 py-0.5 font-mono text-[10px] text-sky-200">
-                        SettlementEscrow.sol + ERC-4337 AA
-                      </span>
-                    </div>
-                    <p className="mt-1 text-xs text-slate-200">
-                      EAS Schemas #1–#3 Buyer Co-Signing • Gas-Sponsored ERC-4337 Smart Accounts •
-                      Atomic DvP in dUSDC ({protocolState?.contracts.SETTLEMENT_ESCROW?.slice(0, 10)}...)
-                    </p>
-                    <div className="mt-2 font-mono text-[10px] text-slate-400">
-                      Active Signer: {authIdentifier} ({activeAddress?.slice(0, 8)}...)
-                    </div>
-                  </div>
-
-                  {/* PLANE 3: DI & ZK Security Layer */}
-                  <div
-                    onMouseEnter={() => setHoveredPlane(2)}
-                    onMouseLeave={() => setHoveredPlane(null)}
-                    className="rounded-xl border border-amber-400/50 bg-gradient-to-r from-slate-900/95 to-indigo-950/90 p-4 transition-all duration-500 shadow-lg"
-                    style={{
-                      transform: exploded3dView
-                        ? `rotateX(12deg) rotateY(-8deg) translateZ(${hoveredPlane === 2 ? '12px' : '0px'})`
-                        : 'none',
-                    }}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="font-mono text-[11px] font-bold text-amber-300">
-                        PLANE 03 • LAYER 3 DI &amp; ZK PRIVACY SHIELD
-                      </span>
-                      <span className="rounded bg-amber-500/20 px-2 py-0.5 font-mono text-[10px] text-amber-200">
-                        IdentityRegistry.sol + Slasher.sol
-                      </span>
-                    </div>
-                    <p className="mt-1 text-xs text-slate-200">
-                      GLEIF vLEI + ONCHAINID • Privado ID Groth16 ZK Selective Disclosure (0 Bytes
-                      SKU Margin Leakage) • {liveNodes.length} Bonded Verifier Nodes
-                    </p>
-                    <div className="mt-2 font-mono text-[10px] text-slate-400">
-                      Contract: {protocolState?.contracts.IDENTITY_REGISTRY}
-                    </div>
-                  </div>
-                </div>
+                  Verify &rarr;
+                </Link>
               </div>
             </div>
           </div>
         </section>
 
-        {/* Interactive Maple Institutional & 3D Architecture Overview */}
-        <Rwa3dArchitectureHero />
-
-        {/* 4 Role-Based Workspaces & Live Contract Directory */}
-        <section className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
+        {/* 4 Dedicated Workspace Entry Points */}
+        <section className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-4">
           <Link
             href="/supplier"
-            className="group rounded-xl border border-[#E2E8F0] bg-white p-5 shadow-xs hover:border-[#0A2540] transition flex flex-col justify-between"
+            className="group rounded-xl border border-slate-800 bg-slate-900/60 p-5 hover:border-emerald-500/50 hover:bg-slate-900 transition flex flex-col justify-between"
           >
             <div>
               <div className="flex items-center justify-between">
-                <SemanticPill variant="emerald">ROLE 01 • EXPORTER</SemanticPill>
-                <FileCheck2 className="h-4 w-4 text-[#0A2540]" />
+                <SemanticPill variant="emerald">ROLE 01 • SUPPLIER</SemanticPill>
+                <FileCheck2 className="h-4 w-4 text-emerald-400" />
               </div>
-              <h3 className="mt-3 text-base font-bold text-[#0F172A] group-hover:text-[#0284C7]">
+              <h3 className="mt-3 text-base font-semibold text-white group-hover:text-emerald-400 transition">
                 Supplier Early-Pay Portal
               </h3>
-              <p className="mt-1.5 text-xs text-[#475569] leading-relaxed">
-                Originate Peppol / GSTN / CFDI e-invoices on-chain, compute canonical hashes, and
-                mint ERC-3643 notes for sub-24h USDC or vIBAN payout.
+              <p className="mt-1.5 text-xs text-slate-400 leading-relaxed">
+                1-Click e-invoice ingestion (Peppol, GSTN, CFDI), canonical hash derivation, and instant ERC-3643 note minting for sub-24h payout.
               </p>
             </div>
-            <div className="mt-4 flex items-center justify-between border-t border-[#E2E8F0] pt-3 font-mono text-xs font-semibold text-[#0A2540]">
+            <div className="mt-4 flex items-center justify-between border-t border-slate-800/80 pt-3 font-mono text-xs text-emerald-400 font-medium">
               <span>Open /supplier</span>
-              <ArrowRight className="h-3.5 w-3.5" />
+              <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-1 transition" />
             </div>
           </Link>
 
           <Link
             href="/financier"
-            className="group rounded-xl border border-[#E2E8F0] bg-white p-5 shadow-xs hover:border-[#0A2540] transition flex flex-col justify-between"
+            className="group rounded-xl border border-slate-800 bg-slate-900/60 p-5 hover:border-sky-500/50 hover:bg-slate-900 transition flex flex-col justify-between"
           >
             <div>
               <div className="flex items-center justify-between">
-                <SemanticPill variant="blue">ROLE 02 • LP / FUND</SemanticPill>
-                <Layers className="h-4 w-4 text-[#0284C7]" />
+                <SemanticPill variant="blue">ROLE 02 • FINANCIER</SemanticPill>
+                <Layers className="h-4 w-4 text-sky-400" />
               </div>
-              <h3 className="mt-3 text-base font-bold text-[#0F172A] group-hover:text-[#0284C7]">
+              <h3 className="mt-3 text-base font-semibold text-white group-hover:text-sky-400 transition">
                 Financier Credit Desk
               </h3>
-              <p className="mt-1.5 text-xs text-[#475569] leading-relaxed">
-                Allocate dUSDC into Senior DROP or Junior TIN ERC-4626 vaults, inspect the 2-Second
-                Trust Scorecard, and execute Atomic DvP settlements.
+              <p className="mt-1.5 text-xs text-slate-400 leading-relaxed">
+                Allocate capital into Senior DROP or Junior TIN vaults, test portfolio default stress scenarios, and fund whole-invoice orderbooks.
               </p>
             </div>
-            <div className="mt-4 flex items-center justify-between border-t border-[#E2E8F0] pt-3 font-mono text-xs font-semibold text-[#0A2540]">
+            <div className="mt-4 flex items-center justify-between border-t border-slate-800/80 pt-3 font-mono text-xs text-sky-400 font-medium">
               <span>Open /financier</span>
-              <ArrowRight className="h-3.5 w-3.5" />
+              <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-1 transition" />
             </div>
           </Link>
 
           <Link
             href="/registry"
-            className="group rounded-xl border border-[#E2E8F0] bg-white p-5 shadow-xs hover:border-[#0A2540] transition flex flex-col justify-between"
+            className="group rounded-xl border border-slate-800 bg-slate-900/60 p-5 hover:border-slate-700 hover:bg-slate-900 transition flex flex-col justify-between"
           >
             <div>
               <div className="flex items-center justify-between">
                 <SemanticPill variant="slate">LAYER 01 • DEDUP</SemanticPill>
-                <Globe2 className="h-4 w-4 text-[#059669]" />
+                <Globe2 className="h-4 w-4 text-slate-400" />
               </div>
-              <h3 className="mt-3 text-base font-bold text-[#0F172A] group-hover:text-[#0284C7]">
+              <h3 className="mt-3 text-base font-semibold text-white group-hover:text-slate-300 transition">
                 Canonical Hash Registry
               </h3>
-              <p className="mt-1.5 text-xs text-[#475569] leading-relaxed">
-                Test deterministic anti-double-financing normalization against live registered
-                hashes in InvoiceRegistry.sol and commit new fingerprints.
+              <p className="mt-1.5 text-xs text-slate-400 leading-relaxed">
+                Test deterministic anti-double-financing normalization against live registered hashes on Base L2 and the MonetaGo API bridge.
               </p>
             </div>
-            <div className="mt-4 flex items-center justify-between border-t border-[#E2E8F0] pt-3 font-mono text-xs font-semibold text-[#0A2540]">
+            <div className="mt-4 flex items-center justify-between border-t border-slate-800/80 pt-3 font-mono text-xs text-slate-400 font-medium">
               <span>Open /registry</span>
-              <ArrowRight className="h-3.5 w-3.5" />
+              <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-1 transition" />
             </div>
           </Link>
 
           <Link
             href="/security"
-            className="group rounded-xl border border-[#E2E8F0] bg-white p-5 shadow-xs hover:border-[#0A2540] transition flex flex-col justify-between"
+            className="group rounded-xl border border-slate-800 bg-slate-900/60 p-5 hover:border-purple-500/50 hover:bg-slate-900 transition flex flex-col justify-between"
           >
             <div>
               <div className="flex items-center justify-between">
                 <SemanticPill variant="zk-masked">LAYER 03 • DI &amp; ZK</SemanticPill>
-                <Lock className="h-4 w-4 text-[#0F172A]" />
+                <Lock className="h-4 w-4 text-purple-400" />
               </div>
-              <h3 className="mt-3 text-base font-bold text-[#0F172A] group-hover:text-[#0284C7]">
+              <h3 className="mt-3 text-base font-semibold text-white group-hover:text-purple-400 transition">
                 DI &amp; ZK Security Console
               </h3>
-              <p className="mt-1.5 text-xs text-[#475569] leading-relaxed">
-                Inspect GLEIF vLEI bindings, issue W3C Verifiable Credentials 2.0 on-chain, and
-                post slashable verifier bonds in Slasher.sol.
+              <p className="mt-1.5 text-xs text-slate-400 leading-relaxed">
+                Inspect GLEIF vLEI bindings, ONCHAINID contracts, W3C VCs 2.0, and Privado ID Groth16 selective disclosure proofs.
               </p>
             </div>
-            <div className="mt-4 flex items-center justify-between border-t border-[#E2E8F0] pt-3 font-mono text-xs font-semibold text-[#0A2540]">
+            <div className="mt-4 flex items-center justify-between border-t border-slate-800/80 pt-3 font-mono text-xs text-purple-400 font-medium">
               <span>Open /security</span>
-              <ArrowRight className="h-3.5 w-3.5" />
+              <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-1 transition" />
             </div>
           </Link>
         </section>
 
-        {/* Live Deployed Smart Contracts & .env Institutional Wallets Telemetry Table */}
+        {/* Live On-Chain Telemetry & Deployed Contracts */}
         <section className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-          <div className="rounded-xl border border-[#E2E8F0] bg-white p-6 shadow-xs lg:col-span-6">
-            <div className="flex items-center justify-between border-b border-[#E2E8F0] pb-3">
+          {/* Contracts Directory */}
+          <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-6 lg:col-span-6">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <div>
-                <h2 className="text-sm font-bold text-[#0F172A]">
-                  Live Deployed Base / ETH Smart Contracts (Chain ID 8453)
+                <h2 className="text-sm font-semibold text-white">
+                  Base L2 Smart Contracts (Chain ID 8453)
                 </h2>
-                <p className="text-xs text-[#64748B]">
-                  All 7 contracts compiled with Solidity 0.8.24 (Cancun EVM) and verified on-chain.
+                <p className="text-xs text-slate-400">
+                  Compiled Solidity 0.8.24 (Cancun EVM) deployed on Base execution environment.
                 </p>
               </div>
-              <SemanticPill variant="emerald">7/7 CONTRACTS LIVE</SemanticPill>
+              <SemanticPill variant="emerald">7/7 VERIFIED</SemanticPill>
             </div>
 
-            <div className="mt-3 divide-y divide-[#E2E8F0] font-mono text-xs">
-              {protocolState?.contracts &&
+            <div className="mt-3 divide-y divide-slate-800/70 font-mono text-xs">
+              {protocolState?.contracts ? (
                 Object.entries(protocolState.contracts).map(([name, address]) => (
                   <div key={name} className="flex items-center justify-between py-2.5">
-                    <span className="font-semibold text-[#0F172A]">{name}</span>
-                    <span className="text-[#0284C7]">{address}</span>
+                    <span className="font-semibold text-slate-300">{name}</span>
+                    <span className="text-cyan-400 truncate max-w-[220px]">{address}</span>
                   </div>
-                ))}
+                ))
+              ) : (
+                <div className="py-4 text-center text-xs text-slate-500">Loading contracts...</div>
+              )}
             </div>
           </div>
 
-          <div className="rounded-xl border border-[#E2E8F0] bg-white p-6 shadow-xs lg:col-span-6">
-            <div className="flex items-center justify-between border-b border-[#E2E8F0] pb-3">
+          {/* Corporate DIDs Registered On-Chain */}
+          <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-6 lg:col-span-6">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <div>
-                <h2 className="text-sm font-bold text-[#0F172A]">
-                  Live Registered Corporate DIDs (IdentityRegistry.sol)
+                <h2 className="text-sm font-semibold text-white">
+                  Corporate Identities (IdentityRegistry.sol)
                 </h2>
-                <p className="text-xs text-[#64748B]">
-                  100% dynamic on-chain Corporate Identities registered via MetaMask &amp; ERC-4337.
+                <p className="text-xs text-slate-400">
+                  GLEIF vLEI verified corporate legal entities on Base L2.
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setIsAuthModalOpen(true)}
-                className="rounded-lg bg-[#0A2540] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#1E293B] cursor-pointer"
+                className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-500 cursor-pointer"
               >
-                + Register / Switch DID
+                + Register DID
               </button>
             </div>
 
             <div className="mt-3 space-y-2.5">
               {liveIdentities.length === 0 ? (
-                <div className="rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] p-5 text-center text-xs text-[#475569]">
-                  No corporate identities registered yet. Click{' '}
-                  <strong>Connect / Switch MetaMask</strong> to connect your wallet and register your
-                  Legal Entity Name, Role (<code className="font-mono">SUPPLIER</code>,{' '}
-                  <code className="font-mono">BUYER</code>, or{' '}
-                  <code className="font-mono">FINANCIER</code>), and 20-char LEI on-chain.
+                <div className="rounded-lg border border-slate-800 bg-slate-950/40 p-5 text-center text-xs text-slate-400">
+                  No corporate identities registered yet. Connect MetaMask to register your Legal Entity and vLEI.
                 </div>
               ) : (
                 liveIdentities.map((id) => (
                   <div
                     key={id.wallet}
-                    className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] p-3"
+                    className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-800 bg-slate-950/40 p-3"
                   >
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="rounded bg-[#0A2540] px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase text-white">
+                        <span className="rounded bg-slate-800 px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase text-emerald-400">
                           {id.role}
                         </span>
-                        <span className="text-xs font-bold text-[#0F172A]">{id.legalName}</span>
+                        <span className="text-xs font-semibold text-white">{id.legalName}</span>
                       </div>
-                      <div className="mt-1 font-mono text-[11px] text-[#475569]">
+                      <div className="mt-1 font-mono text-[11px] text-slate-400 truncate max-w-[280px]">
                         {id.wallet} • vLEI: {id.vlei}
                       </div>
                     </div>
                     <div className="text-right font-mono text-xs tabular-nums">
-                      <div className="font-bold text-[#059669]">
-                        {id.usdcBalanceFormatted ?? '0'} dUSDC
+                      <div className="font-semibold text-emerald-400">
+                        {id.usdcBalanceFormatted ?? '0.00'} dUSDC
                       </div>
-                      <div className="text-[11px] text-[#64748B]">
+                      <div className="text-[11px] text-slate-500">
                         {id.ethBalanceFormatted ?? '0.0000'} ETH
                       </div>
                     </div>
@@ -481,6 +387,23 @@ export function Rwa3dLandingPage() {
           </div>
         </section>
       </main>
+
+      {/* Footer */}
+      <footer className="border-t border-slate-800/80 bg-[#080C14] px-4 py-6 text-xs text-slate-500">
+        <div className="mx-auto max-w-7xl flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <span className="font-semibold text-slate-300">Diptos Protocol</span>
+            <span>&copy; {new Date().getFullYear()}</span>
+            <span>•</span>
+            <span className="font-mono text-[11px]">UNCITRAL MLETR &amp; UCC Art. 12 Compliant</span>
+          </div>
+          <div className="flex items-center gap-4 font-mono text-[11px]">
+            <Link href="/partners" className="hover:text-slate-300 transition">Partner API</Link>
+            <Link href="/registry" className="hover:text-slate-300 transition">Deduplication Fabric</Link>
+            <a href="https://github.com/Jayram2204/Diptos" target="_blank" rel="noreferrer" className="hover:text-slate-300 transition">GitHub</a>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

@@ -14,8 +14,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className="min-h-screen bg-[#F8FAFC] text-[#0F172A] antialiased">
+    <html lang="en" className="dark">
+      <body className="min-h-screen bg-[#080C14] text-slate-100 antialiased selection:bg-emerald-500/20 selection:text-emerald-300">
         <DiptosWeb3Provider>{children}</DiptosWeb3Provider>
       </body>
     </html>

@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Copy, ExternalLink, ShieldCheck, X } from 'lucide-react';
+import { Copy, Check, ExternalLink, ShieldCheck, X } from 'lucide-react';
 import { useDiptosIdentity } from '@/hooks/useDiptosIdentity';
 import { DIPTOS_CONTRACT_ADDRESSES } from '@/layers/layer2-base-protocol/config/contractAbis';
 
@@ -79,27 +79,27 @@ export function ContractsModal({ isOpen, onClose }: ContractsModalProps) {
   const contracts = protocolState?.contracts || DIPTOS_CONTRACT_ADDRESSES;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs">
-      <div className="relative w-full max-w-2xl rounded-xl border border-slate-200 bg-white p-6 shadow-2xl">
-        <div className="flex items-start justify-between border-b border-slate-100 pb-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
+      <div className="relative w-full max-w-2xl rounded-2xl border border-slate-800 bg-[#0B111E] p-6 shadow-2xl shadow-emerald-950/20">
+        <div className="flex items-start justify-between border-b border-slate-800/80 pb-4">
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-base font-semibold text-slate-900">
+              <h2 className="text-base font-semibold text-white">
                 Verified Smart Contracts
               </h2>
-              <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 border border-emerald-200">
+              <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-400 border border-emerald-500/20">
                 <ShieldCheck className="h-3.5 w-3.5" />
                 7/7 Verified On-Chain
               </span>
             </div>
-            <p className="mt-1 text-xs text-slate-500">
+            <p className="mt-1 text-xs text-slate-400">
               Compiled with Solidity 0.8.24 (Cancun EVM) and deployed on Base L2 (Chain ID 84532 / 31337).
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition"
+            className="rounded-lg border border-slate-800 bg-slate-900/60 p-1.5 text-slate-400 hover:text-white hover:border-slate-700 transition cursor-pointer"
             aria-label="Close modal"
           >
             <X className="h-4 w-4" />
@@ -117,40 +117,51 @@ export function ContractsModal({ isOpen, onClose }: ContractsModalProps) {
             return (
               <div
                 key={meta.key}
-                className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50/70 p-3 text-xs"
+                className="flex items-center justify-between gap-3 rounded-xl border border-slate-800/80 bg-slate-900/50 p-3 text-xs hover:border-slate-700 transition"
               >
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <span className="font-semibold text-slate-900 font-mono">
+                    <span className="font-mono font-semibold text-slate-200">
                       {meta.name}
                     </span>
-                    <span className="rounded bg-slate-200/70 px-1.5 py-0.2 font-mono text-[10px] text-slate-600">
+                    <span className="rounded bg-slate-800 px-1.5 py-0.5 font-mono text-[10px] text-slate-400">
                       {meta.standard}
                     </span>
                   </div>
-                  <div className="text-[11px] text-slate-500 mt-0.5 truncate">
+                  <p className="mt-0.5 text-[11px] text-slate-400 truncate">
                     {meta.purpose}
-                  </div>
-                  <div className="mt-1 font-mono text-[11px] text-slate-700 truncate">
-                    {address}
+                  </p>
+                  <div className="mt-1 flex items-center gap-1.5">
+                    <code className="rounded bg-[#06090F] px-1.5 py-0.5 font-mono text-[11px] text-emerald-400">
+                      {address}
+                    </code>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-1.5 shrink-0">
+                <div className="flex items-center gap-1 shrink-0">
                   <button
                     type="button"
                     onClick={() => copyToClipboard(meta.key, address)}
-                    className="inline-flex items-center gap-1 rounded border border-slate-200 bg-white px-2 py-1 text-[11px] font-medium text-slate-700 hover:bg-slate-100 cursor-pointer"
+                    className="flex items-center gap-1 rounded-md border border-slate-800 bg-slate-800/60 px-2 py-1 text-[11px] font-mono text-slate-300 hover:text-white hover:border-slate-700 transition cursor-pointer"
                     title="Copy Contract Address"
                   >
-                    <Copy className="h-3 w-3" />
-                    <span>{isCopied ? 'Copied' : 'Copy'}</span>
+                    {isCopied ? (
+                      <>
+                        <Check className="h-3 w-3 text-emerald-400" />
+                        <span className="text-emerald-400">Copied</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-3 w-3 text-slate-400" />
+                        <span>Copy</span>
+                      </>
+                    )}
                   </button>
                   <a
                     href={`https://sepolia.basescan.org/address/${address}`}
                     target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-1 rounded border border-slate-200 bg-white p-1 text-slate-500 hover:text-slate-900 hover:bg-slate-100"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1 rounded-md border border-slate-800 bg-slate-800/60 px-2 py-1 text-[11px] font-mono text-cyan-400 hover:text-cyan-300 hover:border-slate-700 transition"
                     title="View on BaseScan"
                   >
                     <ExternalLink className="h-3 w-3" />
@@ -161,17 +172,9 @@ export function ContractsModal({ isOpen, onClose }: ContractsModalProps) {
           })}
         </div>
 
-        <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3 text-xs text-slate-500">
-          <span className="font-mono text-[11px]">
-            Test USDC Asset: {contracts.TEST_USDC || DIPTOS_CONTRACT_ADDRESSES.TEST_USDC}
-          </span>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-md bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800 cursor-pointer"
-          >
-            Done
-          </button>
+        <div className="mt-4 flex items-center justify-between border-t border-slate-800/80 pt-4 text-xs text-slate-400">
+          <span>Native AA Paymaster &amp; Gas Tank Active</span>
+          <span className="font-mono text-emerald-400">Zero Gas for Whitelisted Partners</span>
         </div>
       </div>
     </div>

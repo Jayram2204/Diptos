@@ -1,29 +1,65 @@
 @import "tailwindcss";
 
 :root {
-  --diptos-bg-alabaster: #F8FAFC;
-  --diptos-surface-white: #FFFFFF;
-  --diptos-border-hairline: #E2E8F0;
-  --diptos-ink-primary: #0F172A;
-  --diptos-ink-body: #334155;
-  --diptos-ink-muted: #64748B;
-  --diptos-navy-cta: #0A2540;
-  --diptos-emerald-yield: #047857;
-  --diptos-blue-trust: #1D4ED8;
-  --diptos-red-alert: #991B1B;
+  --diptos-canvas: #080C14;
+  --diptos-card: #0F172A;
+  --diptos-card-hover: #131D33;
+  --diptos-border: #1E293B;
+  --diptos-border-light: #334155;
+  --diptos-text-primary: #F8FAFC;
+  --diptos-text-secondary: #94A3B8;
+  --diptos-text-muted: #64748B;
+  --diptos-emerald: #10B981;
+  --diptos-cyan: #06B6D4;
+  --diptos-blue: #3B82F6;
+  --diptos-amber: #F59E0B;
 }
 
 body {
-  background-color: var(--diptos-bg-alabaster);
-  color: var(--diptos-ink-primary);
-  font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background-color: #080C14;
+  color: #F8FAFC;
+  font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
+/* Tabular numerals for financial values and addresses */
 .font-mono,
 code,
 pre,
 .tabular-nums {
   font-family: var(--font-ibm-plex-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-variant-numeric: tabular-nums;
+}
+
+/* Custom scrollbar for data tables */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #080C14;
+}
+::-webkit-scrollbar-thumb {
+  background: #1E293B;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #334155;
+}
+
+/* Glowing utility styles */
+.glow-emerald {
+  box-shadow: 0 0 24px -4px rgba(16, 185, 129, 0.15);
+}
+
+.glow-cyan {
+  box-shadow: 0 0 24px -4px rgba(6, 182, 212, 0.15);
+}
+
+.grid-blueprint {
+  background-image: 
+    linear-gradient(to right, rgba(30, 41, 59, 0.35) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(30, 41, 59, 0.35) 1px, transparent 1px);
+  background-size: 32px 32px;
 }
